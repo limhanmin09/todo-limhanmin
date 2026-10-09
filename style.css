@@ -30,10 +30,18 @@ body {
 }
 
 h1 {
-  margin: 0 0 24px;
+  margin: 0 0 6px;
   font-size: 30px;
   text-align: center;
   color: var(--text);
+}
+
+/* 제목 아래 작은 글씨 */
+.subtitle {
+  margin: 0 0 24px;
+  font-size: 15px;
+  text-align: center;
+  color: var(--muted);
 }
 
 /* 가장 가까운 할 일 알림 */
