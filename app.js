@@ -38,6 +38,26 @@ function randomQuote() {
 empty.textContent = randomQuote();
 footerQuote.textContent = randomQuote();
 
+// 낮/밤 배경: 오전 6시~오후 6시는 낮, 나머지는 밤
+// (처음 정하는 건 index.html에서 하고, 여기서는 1분마다 다시 확인해요)
+function updateTheme() {
+  const hour = new Date().getHours();
+  document.documentElement.dataset.theme = hour >= 6 && hour < 18 ? "day" : "night";
+}
+setInterval(updateTheme, 60 * 1000);
+
+// 밤하늘 별: 작은 네모를 여기저기 뿌려요 (땅이 있는 아래쪽은 빼고)
+const stars = document.getElementById("stars");
+for (let i = 0; i < 70; i++) {
+  const star = document.createElement("i");
+  if (i % 10 === 0) star.className = "big"; // 열 개 중 하나는 반짝이는 + 모양
+  star.style.left = `${Math.random() * 100}%`;
+  star.style.top = `${Math.random() * 80}%`;
+  star.style.animationDelay = `${-Math.random() * 2}s`;
+  star.style.animationDuration = `${1 + Math.random() * 2}s`;
+  stars.append(star);
+}
+
 // 마감 시각 구하기 (시간을 안 골랐으면 그날 밤 23:59로 봐요)
 function dueTime(todo) {
   if (!todo.date) return Infinity; // 마감일 없음 → 맨 아래로

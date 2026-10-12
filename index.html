@@ -4,18 +4,30 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>할 일 목록</title>
-  <!-- 배경 글씨용 글꼴 (인터넷이 없으면 비슷한 기본 글꼴로 보여요) -->
+  <!-- 픽셀 글꼴: 영어는 Press Start 2P, 한글은 갈무리 (인터넷이 없으면 기본 글꼴로 보여요) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/galmuri@2/dist/galmuri.css">
   <link rel="stylesheet" href="style.css">
+  <!-- 아침(오전 6시~오후 6시)이면 낮 배경, 아니면 밤 배경. 화면이 그려지기 전에 정해요 -->
+  <script>
+    (function () {
+      var h = new Date().getHours();
+      document.documentElement.dataset.theme = h >= 6 && h < 18 ? "day" : "night";
+    })();
+  </script>
 </head>
 <body>
-  <!-- 밤하늘 배경: 별 + 카드 뒤 큰 글씨 -->
+  <!-- 픽셀 게임 배경: 해/달, 구름/별, 땅 + 카드 뒤 큰 글씨 -->
   <div class="backdrop" aria-hidden="true">
-    <div class="stars"></div>
-    <div class="stars far"></div>
+    <div id="stars" class="stars"></div>
+    <div class="sky-light"></div>
+    <div class="cloud c1"></div>
+    <div class="cloud c2"></div>
+    <div class="cloud c3"></div>
     <p class="jesus">JESUS<span>loves you</span></p>
+    <div class="ground"></div>
   </div>
 
   <main class="app">
