@@ -6,6 +6,7 @@ const form = document.getElementById("new-todo-form");
 const input = document.getElementById("new-todo");
 const dateInput = document.getElementById("new-date");
 const timeInput = document.getElementById("new-time");
+const authorInput = document.getElementById("new-author");
 const list = document.getElementById("todo-list");
 const nearest = document.getElementById("nearest");
 const empty = document.getElementById("empty");
@@ -81,12 +82,23 @@ function render() {
       render();
     });
 
-    // 할 일 내용
+    // 할 일 내용 + 작성자 (작성자는 적었을 때만 아래에 작게)
+    const text = document.createElement("div");
+    text.className = "text";
+
     const title = document.createElement("span");
     title.className = "title";
     title.textContent = todo.title;
+    text.append(title);
 
-    li.append(checkbox, title);
+    if (todo.author) {
+      const author = document.createElement("span");
+      author.className = "author";
+      author.textContent = `✍ ${todo.author}`;
+      text.append(author);
+    }
+
+    li.append(checkbox, text);
 
     // 마감일 표시 (마감일이 있을 때만)
     if (todo.date) {
@@ -136,7 +148,9 @@ form.addEventListener("submit", (event) => {
     done: false,
     date: dateInput.value, // 안 골랐으면 ""
     time: dateInput.value ? timeInput.value : "", // 날짜 없이 시간만은 무시
+    author: authorInput.value.trim(), // 안 적었으면 ""
   });
+  // 작성자 이름은 다음 할 일에도 쓰도록 지우지 않고 남겨 둬요
   input.value = "";
   dateInput.value = "";
   timeInput.value = "";
