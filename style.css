@@ -205,6 +205,21 @@ h1 {
   word-break: break-word;
 }
 
+.todo-list .title { cursor: text; }
+
+/* 고치는 중인 입력칸 */
+.todo-list .edit {
+  width: 100%;
+  padding: 4px 10px;
+  font: inherit;
+  font-size: 16px;
+  color: var(--text);
+  background: var(--sky-light);
+  border: 2px solid var(--sky-deep);
+  border-radius: 10px;
+  outline: none;
+}
+
 /* 작성자 이름: 할 일 아래 작은 글씨 */
 .todo-list .author {
   font-size: 12px;

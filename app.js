@@ -62,6 +62,35 @@ function timeText(time) {
   return m === 0 ? `${ampm} ${hour}시` : `${ampm} ${hour}시 ${m}분`;
 }
 
+// 할 일 글자를 두 번 누르면 입력칸으로 바꿔서 고치기
+// Enter: 저장 (다 지웠으면 원래대로), Esc나 다른 곳 클릭: 취소
+function startEdit(todo, title) {
+  const editor = document.createElement("input");
+  editor.type = "text";
+  editor.className = "edit";
+  editor.value = todo.title;
+  title.replaceWith(editor);
+  editor.focus();
+  editor.select();
+
+  let finished = false; // 저장/취소가 두 번 실행되지 않게 막기
+
+  function finish(save) {
+    if (finished) return;
+    finished = true;
+    const text = editor.value.trim();
+    if (save && text !== "") todo.title = text;
+    render();
+  }
+
+  editor.addEventListener("keydown", (event) => {
+    if (event.isComposing) return; // 한글 입력 중의 Enter는 무시
+    if (event.key === "Enter") finish(true);
+    if (event.key === "Escape") finish(false);
+  });
+  editor.addEventListener("blur", () => finish(false));
+}
+
 // 화면을 todos 내용대로 다시 그리기
 function render() {
   list.innerHTML = "";
@@ -91,6 +120,8 @@ function render() {
     const title = document.createElement("span");
     title.className = "title";
     title.textContent = todo.title;
+    title.title = "두 번 눌러서 고치기";
+    title.addEventListener("dblclick", () => startEdit(todo, title));
     text.append(title);
 
     if (todo.author) {
