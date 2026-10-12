@@ -268,6 +268,7 @@ let dinoShowing = false; // 공룡이 나와 있는 동안 또 누르면 무시
 function showDino() {
   if (dinoShowing) return;
   dinoShowing = true;
+  noseButton.hidden = true; // 코 버튼은 한 번 누르면 사라져요
 
   // 픽셀 공룡 그림: G=몸, E=눈 흰자, K=눈동자 (테두리는 자동으로 그려요)
   const art = [
