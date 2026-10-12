@@ -10,11 +10,16 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/galmuri@2/dist/galmuri.css">
   <link rel="stylesheet" href="style.css">
-  <!-- 아침(오전 6시~오후 6시)이면 낮 배경, 아니면 밤 배경. 화면이 그려지기 전에 정해요 -->
+  <!-- 시간대(아침/낮/저녁/밤)와 계절을 화면이 그려지기 전에 정해요 -->
   <script>
     (function () {
-      var h = new Date().getHours();
-      document.documentElement.dataset.theme = h >= 6 && h < 18 ? "day" : "night";
+      var now = new Date();
+      var h = now.getHours();
+      var m = now.getMonth() + 1;
+      document.documentElement.dataset.theme =
+        h >= 6 && h < 10 ? "morning" : h >= 10 && h < 17 ? "day" : h >= 17 && h < 20 ? "evening" : "night";
+      document.documentElement.dataset.season =
+        m >= 3 && m <= 5 ? "spring" : m >= 6 && m <= 8 ? "summer" : m >= 9 && m <= 11 ? "autumn" : "winter";
     })();
   </script>
 </head>
@@ -26,9 +31,16 @@
     <div class="cloud c1"></div>
     <div class="cloud c2"></div>
     <div class="cloud c3"></div>
+    <div class="cloud c4 extra"></div>
+    <div class="cloud c5 extra"></div>
     <p class="jesus">JESUS<span>loves you</span></p>
+    <!-- 계절·날씨 효과 (벚꽃잎, 낙엽, 눈, 비, 반딧불) -->
+    <canvas id="weather" class="weather"></canvas>
     <div class="ground"></div>
   </div>
+
+  <!-- 땅 위를 지나가는 픽셀 친구들 (건드리면 깜짝 놀라요) -->
+  <div id="critters" class="critters" aria-hidden="true"></div>
 
   <main class="app">
     <h1>할 일 목록</h1>

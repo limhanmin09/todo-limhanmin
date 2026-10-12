@@ -38,13 +38,140 @@ function randomQuote() {
 empty.textContent = randomQuote();
 footerQuote.textContent = randomQuote();
 
-// 낮/밤 배경: 오전 6시~오후 6시는 낮, 나머지는 밤
+// ===== 배경: 시간대 + 계절 + 날씨 =====
+// 시간대: 아침(6~10시) / 낮(10~17시) / 저녁(17~20시) / 밤(20~6시)
+// 계절: 봄(3~5월) / 여름(6~8월) / 가을(9~11월) / 겨울(12~2월)
 // (처음 정하는 건 index.html에서 하고, 여기서는 1분마다 다시 확인해요)
+const root = document.documentElement;
+
 function updateTheme() {
-  const hour = new Date().getHours();
-  document.documentElement.dataset.theme = hour >= 6 && hour < 18 ? "day" : "night";
+  const now = new Date();
+  const h = now.getHours();
+  const m = now.getMonth() + 1;
+  root.dataset.theme =
+    h >= 6 && h < 10 ? "morning" : h >= 10 && h < 17 ? "day" : h >= 17 && h < 20 ? "evening" : "night";
+  root.dataset.season =
+    m >= 3 && m <= 5 ? "spring" : m >= 6 && m <= 8 ? "summer" : m >= 9 && m <= 11 ? "autumn" : "winter";
 }
 setInterval(updateTheme, 60 * 1000);
+
+// 날씨: 위치를 허락하면 Open-Meteo(무료 날씨 서비스)에서 지금 날씨를 받아와요.
+// 허락하지 않거나 실패하면 계절 효과만 보여요. 30분마다 다시 확인해요.
+function updateWeather() {
+  if (!("geolocation" in navigator)) return;
+  navigator.geolocation.getCurrentPosition(
+    async ({ coords }) => {
+      try {
+        const url =
+          "https://api.open-meteo.com/v1/forecast" +
+          `?latitude=${coords.latitude.toFixed(2)}&longitude=${coords.longitude.toFixed(2)}&current=weather_code`;
+        const data = await (await fetch(url)).json();
+        root.dataset.weather = weatherKind(data.current.weather_code);
+      } catch {
+        delete root.dataset.weather; // 실패하면 계절 효과만
+      }
+    },
+    () => delete root.dataset.weather, // 위치 허락 안 함 → 계절 효과만
+    { timeout: 10000, maximumAge: 30 * 60 * 1000 }
+  );
+}
+
+// 날씨 번호(WMO 코드)를 맑음/흐림/비/눈/뇌우 다섯 가지로 묶어요
+function weatherKind(code) {
+  if (code <= 1) return "clear";
+  if (code <= 48) return "cloudy";             // 구름 많음, 흐림, 안개
+  if (code >= 71 && code <= 77) return "snow";
+  if (code === 85 || code === 86) return "snow";
+  if (code >= 95) return "storm";
+  return "rain";                                // 이슬비, 비, 소나기
+}
+
+updateWeather();
+setInterval(updateWeather, 30 * 60 * 1000);
+
+// 계절·날씨 효과를 픽셀 네모로 그려요
+// 비/눈/뇌우 날씨가 먼저, 아니면 계절: 봄=벚꽃잎, 가을=낙엽, 겨울=눈, 여름 저녁·밤=반딧불
+const weatherCanvas = document.getElementById("weather");
+const wctx = weatherCanvas.getContext("2d");
+const drops = [];
+
+function effectKind() {
+  const w = root.dataset.weather;
+  if (w === "rain" || w === "storm") return "rain";
+  if (w === "snow") return "snow";
+  const season = root.dataset.season;
+  if (season === "spring") return "petal";
+  if (season === "autumn") return "leaf";
+  if (season === "winter") return "snow";
+  if (root.dataset.theme === "evening" || root.dataset.theme === "night") return "firefly";
+  return "none";
+}
+
+function newDrop(kind, W, H, anywhere) {
+  const palettes = {
+    petal: ["#ffc8dd", "#ffafcc", "#fde2e4"],
+    leaf: ["#e76f51", "#f4a261", "#e9c46a", "#bc6c25"],
+    snow: ["#ffffff", "#eaf4ff"],
+    rain: ["rgba(200, 225, 255, 0.7)"],
+    firefly: ["#fff59d", "#d4fc79"],
+  };
+  const colors = palettes[kind];
+  return {
+    kind,
+    x: Math.random() * W,
+    y: anywhere ? Math.random() * H : -10,
+    speed: kind === "rain" ? 9 + Math.random() * 5 : kind === "firefly" ? 0.3 : 0.6 + Math.random() * 1.2,
+    sway: Math.random() * Math.PI * 2,
+    size: kind === "rain" ? 3 : kind === "snow" ? (Math.random() < 0.3 ? 9 : 6) : 6,
+    color: colors[Math.floor(Math.random() * colors.length)],
+  };
+}
+
+function drawWeather() {
+  const W = weatherCanvas.clientWidth;
+  const H = weatherCanvas.clientHeight;
+  if (weatherCanvas.width !== W) weatherCanvas.width = W; // 창 크기가 바뀔 때만 다시 맞춰요
+  if (weatherCanvas.height !== H) weatherCanvas.height = H;
+  const kind = effectKind();
+  const target = { none: 0, petal: 40, leaf: 35, snow: 90, rain: 160, firefly: 25 }[kind];
+
+  // 종류가 바뀌면 다시 뿌리고, 개수를 맞춰요
+  if (drops.length && drops[0].kind !== kind) drops.length = 0;
+  while (drops.length < target) drops.push(newDrop(kind, W, H, true));
+  drops.length = Math.min(drops.length, target);
+
+  wctx.clearRect(0, 0, W, H);
+  for (const d of drops) {
+    d.sway += 0.03;
+    if (kind === "firefly") {
+      d.x += Math.cos(d.sway) * 0.6;
+      d.y += Math.sin(d.sway * 0.7) * 0.4;
+      wctx.globalAlpha = 0.4 + 0.6 * Math.abs(Math.sin(d.sway * 2));
+    } else {
+      d.y += d.speed;
+      d.x += kind === "rain" ? -1.5 : Math.sin(d.sway) * 0.8;
+      wctx.globalAlpha = 1;
+    }
+    if (d.y > H || d.x < -10 || d.x > W + 10) Object.assign(d, newDrop(kind, W, H, false));
+    wctx.fillStyle = d.color;
+    const px = Math.round(d.x / 3) * 3; // 픽셀 칸에 맞추기
+    const py = Math.round(d.y / 3) * 3;
+    if (kind === "rain") wctx.fillRect(px, py, 3, 12);
+    else wctx.fillRect(px, py, d.size, d.size);
+  }
+  wctx.globalAlpha = 1;
+  requestAnimationFrame(drawWeather);
+}
+requestAnimationFrame(drawWeather);
+
+// 뇌우일 때는 가끔 번개가 번쩍여요
+setInterval(() => {
+  if (root.dataset.weather !== "storm" || Math.random() < 0.6) return;
+  document.querySelector(".backdrop").animate(
+    [{ filter: "brightness(1)" }, { filter: "brightness(2.2)" }, { filter: "brightness(1)" }, { filter: "brightness(1.8)" }, { filter: "brightness(1)" }],
+    { duration: 500, easing: "steps(5)" }
+  );
+}, 4000);
 
 // 밤하늘 별: 작은 네모를 여기저기 뿌려요 (땅이 있는 아래쪽은 빼고)
 const stars = document.getElementById("stars");
@@ -259,91 +386,343 @@ form.addEventListener("submit", (event) => {
   }
 });
 
-// 🦖 코 버튼을 누르면 거대한 픽셀 공룡이 3초 동안 나왔다 들어가요
+// ===== 픽셀 그림 도우미 =====
+// 글자 하나가 픽셀 한 칸이에요. "."은 빈칸, 나머지 글자는 colors에서 색을 찾아요.
+// outline 색을 주면 그림 바깥에 1칸짜리 테두리를 자동으로 그려요.
+function makeSprite(art, colors, outline) {
+  const pad = outline ? 1 : 0;
+  const canvas = document.createElement("canvas");
+  canvas.width = art[0].length + pad * 2;
+  canvas.height = art.length + pad * 2;
+  const g = canvas.getContext("2d");
+  const filled = (x, y) => art[y]?.[x] && art[y][x] !== ".";
+  for (let y = -pad; y < art.length + pad; y++) {
+    for (let x = -pad; x < art[0].length + pad; x++) {
+      if (filled(x, y)) {
+        g.fillStyle = colors[art[y][x]];
+      } else if (outline && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => filled(x + dx, y + dy))) {
+        g.fillStyle = outline;
+      } else {
+        continue;
+      }
+      g.fillRect(x + pad, y + pad, 1, 1);
+    }
+  }
+  return canvas;
+}
+
+// 화면(카드와 배경)을 흔들어요
+function shakeScreen(duration, power) {
+  const frames = [];
+  for (let i = 0; i < 10; i++) {
+    const p = power * (1 - i / 10);
+    frames.push({ transform: `translate(${(Math.random() - 0.5) * p * 2}px, ${(Math.random() - 0.5) * p * 2}px)` });
+  }
+  frames.push({ transform: "translate(0, 0)" });
+  for (const el of document.querySelectorAll(".app, .backdrop")) {
+    el.animate(frames, { duration, easing: "steps(10)" });
+  }
+}
+
+// 🦖 코 버튼을 누르면 거대한 픽셀 공룡이 3초 동안 튀어나와요
+// 갑자기 번쩍! → 화면을 꽉 채우며 튀어나옴 → 입을 쩍 벌리고 화면 쪽으로 덤벼듦 → 쑥 내려감
 const noseButton = document.getElementById("nose-btn");
 noseButton.addEventListener("click", showDino);
 
 let dinoShowing = false; // 공룡이 나와 있는 동안 또 누르면 무시
+
+const dinoArt = [
+  "..........GGGGGGGG..",
+  ".........GGEKGGGGGGG",
+  ".........GGGGGGGGGGG",
+  ".........GGGGGGGGGGG",
+  ".........GGGGGG.....",
+  ".........GGGGGGGGG..",
+  "G.......GGGGG.......",
+  "G......GGGGGG.......",
+  "GG....GGGGGGGGG.....",
+  "GGG..GGGGGGGG.G.....",
+  "GGGGGGGGGGGGG.......",
+  "GGGGGGGGGGGG........",
+  ".GGGGGGGGGGG........",
+  "..GGGGGGGGGG........",
+  "...GGGGGGGG.........",
+  "....GGG.GGG.........",
+  "....GG....G.........",
+  "....G.....G.........",
+  "....GG....GG........",
+];
+// 입을 쩍 벌린 모습: 빨간 입속(R)과 이빨(W), 눈은 빨갛게(F)
+const dinoRoarArt = [
+  "..........GGGGGGGG..",
+  ".........GGFKGGGGGGG",
+  ".........GGGGGGGGGGG",
+  ".........GGGGGWGWGWG",
+  ".........GGGRRRRRRRR",
+  ".........GGRRRRRRR..",
+  "G.......GGGRRRRR....",
+  "G......GGGGGWGWGW...",
+  "GG....GGGGGGGGGG....",
+  "GGG..GGGGGGGG.G.....",
+  "GGGGGGGGGGGGG.......",
+  "GGGGGGGGGGGG........",
+  ".GGGGGGGGGGG........",
+  "..GGGGGGGGGG........",
+  "...GGGGGGGG.........",
+  "....GGG.GGG.........",
+  "....GG....G.........",
+  "....G.....G.........",
+  "....GG....GG........",
+];
+const dinoColors = { G: "#5cb85c", E: "#ffffff", K: "#2b2d42", F: "#ff2e2e", R: "#8b1e2d", W: "#ffffff" };
 
 function showDino() {
   if (dinoShowing) return;
   dinoShowing = true;
   noseButton.hidden = true; // 코 버튼은 한 번 누르면 사라져요
 
-  // 픽셀 공룡 그림: G=몸, E=눈 흰자, K=눈동자 (테두리는 자동으로 그려요)
-  const art = [
-    "..........GGGGGGGG..",
-    ".........GGEKGGGGGGG",
-    ".........GGGGGGGGGGG",
-    ".........GGGGGGGGGGG",
-    ".........GGGGGG.....",
-    ".........GGGGGGGGG..",
-    "G.......GGGGG.......",
-    "G......GGGGGG.......",
-    "GG....GGGGGGGGG.....",
-    "GGG..GGGGGGGG.G.....",
-    "GGGGGGGGGGGGG.......",
-    "GGGGGGGGGGGG........",
-    ".GGGGGGGGGGG........",
-    "..GGGGGGGGGG........",
-    "...GGGGGGGG.........",
-    "....GGG.GGG.........",
-    "....GG....G.........",
-    "....G.....G.........",
-    "....GG....GG........",
-  ];
-  const colors = { G: "#5cb85c", E: "#ffffff", K: "#2b2d42" };
-  const outline = "#1f5130";
+  const calm = makeSprite(dinoArt, dinoColors, "#1f5130");
+  const roar = makeSprite(dinoRoarArt, dinoColors, "#1f5130");
 
-  const canvas = document.createElement("canvas");
-  canvas.width = art[0].length + 2; // 테두리 자리 1칸씩
-  canvas.height = art.length + 2;
-  const g = canvas.getContext("2d");
-  const filled = (x, y) => art[y]?.[x] && art[y][x] !== ".";
-  for (let y = -1; y <= art.length; y++) {
-    for (let x = -1; x <= art[0].length; x++) {
-      if (filled(x, y)) {
-        g.fillStyle = colors[art[y][x]];
-      } else if ([[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => filled(x + dx, y + dy))) {
-        g.fillStyle = outline;
-      } else {
-        continue;
-      }
-      g.fillRect(x + 1, y + 1, 1, 1);
-    }
-  }
-
-  // 화면 아래에서 솟아오르는 공룡 + 말풍선
+  // 어두워지는 막 + 번쩍이는 빛 + 공룡 + 고함 글씨
+  const dim = document.createElement("div");
+  dim.className = "dino-dim";
+  const flash = document.createElement("div");
+  flash.className = "dino-flash";
   const stage = document.createElement("div");
   stage.className = "dino-stage";
-  const bubble = document.createElement("p");
-  bubble.className = "dino-bubble";
-  bubble.textContent = "크아앙!";
-  stage.append(canvas, bubble);
-  document.body.append(stage);
+  const canvas = document.createElement("canvas");
+  canvas.width = calm.width;
+  canvas.height = calm.height;
+  const g = canvas.getContext("2d");
+  g.drawImage(calm, 0, 0);
+  stage.append(canvas);
+  const shout = document.createElement("p");
+  shout.className = "dino-shout";
+  shout.textContent = "크아아앙!!!";
+  document.body.append(dim, stage, flash, shout);
 
-  // 0~0.4초 솟아오름 → 2.4초 머무름 (살짝 들썩) → 마지막 0.6초 내려감 = 3초
+  // 1) 갑자기 빨갛게 번쩍 + 크게 흔들림
+  flash.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 400, easing: "steps(4)" });
+  shakeScreen(1600, 28);
+  dim.animate(
+    [{ opacity: 0 }, { opacity: 0.6, offset: 0.05 }, { opacity: 0.6, offset: 0.85 }, { opacity: 0 }],
+    { duration: 3000, fill: "forwards" }
+  );
+
+  // 2) 0.1초 만에 화면을 꽉 채우며 튀어나오고, 화면 쪽으로 덤벼들었다가, 마지막에 쑥 내려가요
   stage.animate(
     [
-      { transform: "translate(-50%, 100%)" },
-      { transform: "translate(-50%, 0)", offset: 0.13 },
-      { transform: "translate(-50%, -3%)", offset: 0.3 },
-      { transform: "translate(-50%, 0)", offset: 0.45 },
-      { transform: "translate(-50%, -3%)", offset: 0.6 },
-      { transform: "translate(-50%, 0)", offset: 0.8 },
-      { transform: "translate(-50%, 100%)" },
+      { transform: "translate(-50%, 100%) scale(1)" },
+      { transform: "translate(-50%, 0) scale(1)", offset: 0.03 },
+      { transform: "translate(-50%, 0) scale(1)", offset: 0.12 },
+      { transform: "translate(-50%, 4%) scale(1.45)", offset: 0.18 },
+      { transform: "translate(-50%, 2%) scale(1.35)", offset: 0.3 },
+      { transform: "translate(-50%, 4%) scale(1.42)", offset: 0.45 },
+      { transform: "translate(-50%, 2%) scale(1.35)", offset: 0.6 },
+      { transform: "translate(-50%, 0) scale(1.1)", offset: 0.82 },
+      { transform: "translate(-50%, 110%) scale(1)" },
     ],
-    { duration: 3000, easing: "steps(30)" } // 뚝뚝 끊어 움직여서 게임처럼
+    { duration: 3000, easing: "steps(45)" }
   ).onfinish = () => {
+    dim.remove();
     stage.remove();
+    flash.remove();
+    shout.remove();
     dinoShowing = false;
   };
 
-  bubble.animate(
-    [{ opacity: 0 }, { opacity: 0, offset: 0.12 }, { opacity: 1, offset: 0.15 }, { opacity: 1, offset: 0.78 }, { opacity: 0, offset: 0.8 }],
-    { duration: 3000, fill: "forwards" }
+  // 3) 덤벼드는 순간 입을 쩍 벌리고 고함 + 하얗게 한 번 더 번쩍
+  setTimeout(() => {
+    g.clearRect(0, 0, canvas.width, canvas.height);
+    g.drawImage(roar, 0, 0);
+    flash.style.background = "#fff";
+    flash.animate([{ opacity: 0.9 }, { opacity: 0 }], { duration: 350, easing: "steps(3)" });
+    shakeScreen(1200, 36);
+  }, 360);
+  setTimeout(() => {
+    g.clearRect(0, 0, canvas.width, canvas.height);
+    g.drawImage(calm, 0, 0);
+  }, 2300);
+
+  shout.animate(
+    [
+      { opacity: 0, transform: "translate(-50%, 0) scale(3) rotate(-6deg)" },
+      { opacity: 0, transform: "translate(-50%, 0) scale(3) rotate(-6deg)", offset: 0.12 },
+      { opacity: 1, transform: "translate(-50%, 0) scale(1) rotate(-6deg)", offset: 0.16 },
+      { opacity: 1, transform: "translate(-52%, 2px) scale(1.05) rotate(-4deg)", offset: 0.3 },
+      { opacity: 1, transform: "translate(-48%, -2px) scale(1) rotate(-8deg)", offset: 0.5 },
+      { opacity: 1, transform: "translate(-51%, 2px) scale(1.05) rotate(-5deg)", offset: 0.7 },
+      { opacity: 0, transform: "translate(-50%, 0) scale(0.8) rotate(-6deg)", offset: 0.8 },
+      { opacity: 0, transform: "translate(-50%, 0) scale(0.8) rotate(-6deg)" },
+    ],
+    { duration: 3000, easing: "steps(40)", fill: "forwards" }
   );
 }
+
+// ===== 🐾 땅 위를 지나가는 픽셀 친구들 =====
+// 가끔 하나씩 화면 한쪽에서 반대쪽으로 걸어가요.
+// 마우스를 올리거나 누르면 "!" 하고 깜짝 놀라 펄쩍 뛴 다음 반대로 도망가요.
+const critterKinds = [
+  {
+    name: "고양이",
+    colors: { O: "#f4a259", K: "#2b2d42", P: "#ff8fab" },
+    frames: [
+      [
+        "........O..O",
+        "........OOOO",
+        "........OKOK",
+        "O.......OOPO",
+        "O..OOOOOOOOO",
+        ".OOOOOOOOOO.",
+        "..OOOOOOOOO.",
+        "..OOOOOOOOO.",
+        "..O.O...O.O.",
+        "..O.O...O.O.",
+      ],
+      [
+        "........O..O",
+        "........OOOO",
+        "........OKOK",
+        ".O......OOPO",
+        "O..OOOOOOOOO",
+        ".OOOOOOOOOO.",
+        "..OOOOOOOOO.",
+        "..OOOOOOOOO.",
+        "...O.O...O.O",
+        "...O.O...O.O",
+      ],
+    ],
+    outline: "#7a3e12",
+  },
+  {
+    name: "병아리",
+    colors: { Y: "#ffd23f", K: "#2b2d42", B: "#f77f00" },
+    frames: [
+      ["..YYYY..", ".YYYYKY.", ".YYYYYYB", "YYYYYYY.", "YYYYYYY.", ".YYYYY..", "..B.B...", "..B.B..."],
+      ["..YYYY..", ".YYYYKY.", ".YYYYYYB", "YYYYYYY.", "YYYYYYY.", ".YYYYY..", "..B..B..", ".B...B.."],
+    ],
+    outline: "#a86b00",
+  },
+  {
+    name: "슬라임",
+    colors: { S: "#7bd389", K: "#2b2d42", W: "#ffffff" },
+    frames: [
+      ["...SSSS...", "..SWSSSS..", ".SSSKSSKS.", "SSSSSSSSSS", "SSSSSSSSSS", "SSSSSSSSSS", ".SSSSSSSS."],
+      ["..........", "...SSSS...", "..SWSSSSS.", ".SSSKSSKSS", "SSSSSSSSSS", "SSSSSSSSSS", "SSSSSSSSSS"],
+    ],
+    outline: "#2f7a3e",
+  },
+  {
+    name: "펭귄",
+    colors: { K: "#2b2d42", W: "#ffffff", B: "#f77f00", E: "#000000" },
+    frames: [
+      ["..KKKK..", ".KKKKKK.", ".KKWEKKB", ".KWWWWK.", "KKWWWWKK", "KKWWWWKK", ".KWWWWK.", ".KWWWWK.", "..B..B..", ".BB..BB."],
+      ["..KKKK..", ".KKKKKK.", ".KKWEKKB", ".KWWWWK.", "KKWWWWKK", "KKWWWWKK", ".KWWWWK.", ".KWWWWK.", "...BB...", "..BB.BB."],
+    ],
+    outline: "#000000",
+  },
+];
+
+// 미리 그림을 만들어 둬요 (그림마다 걷는 모습 2장)
+for (const kind of critterKinds) {
+  kind.sprites = kind.frames.map((art) => makeSprite(art, kind.colors, kind.outline));
+}
+
+const critterLayer = document.getElementById("critters");
+const critters = [];
+
+function spawnCritter() {
+  if (critters.length >= 4) return; // 한 화면에 최대 4마리
+  const kind = critterKinds[Math.floor(Math.random() * critterKinds.length)];
+  const scale = 5; // 픽셀 한 칸 = 5px
+  const fromLeft = Math.random() < 0.5;
+
+  const el = document.createElement("div");
+  el.className = "critter";
+  const body = document.createElement("canvas");
+  body.width = kind.sprites[0].width;
+  body.height = kind.sprites[0].height;
+  body.style.width = `${body.width * scale}px`;
+  body.style.height = `${body.height * scale}px`;
+  const bubble = document.createElement("span");
+  bubble.className = "critter-bubble";
+  bubble.textContent = "!";
+  el.append(bubble, body);
+  critterLayer.append(el);
+
+  const critter = {
+    el,
+    body,
+    kind,
+    x: fromLeft ? -body.width * scale : window.innerWidth,
+    dir: fromLeft ? 1 : -1,
+    speed: 40 + Math.random() * 30, // 1초에 몇 px
+    frame: 0,
+    scared: false,
+  };
+  critters.push(critter);
+
+  // 건드리면 깜짝!
+  const startle = () => {
+    if (critter.scared) return;
+    critter.scared = true;
+    el.classList.add("scared");
+    body.animate(
+      [
+        { transform: `scaleX(${critter.dir}) translateY(0)` },
+        { transform: `scaleX(${critter.dir}) translateY(-60px)` },
+        { transform: `scaleX(${critter.dir}) translateY(0)` },
+      ],
+      { duration: 450, easing: "steps(6)" }
+    );
+    // 놀라서 잠깐 멈췄다가 반대로 4배 빠르게 도망가요
+    critter.speed = 0;
+    setTimeout(() => {
+      critter.dir *= -1;
+      critter.speed = 260;
+    }, 450);
+  };
+  el.addEventListener("pointerenter", startle);
+  el.addEventListener("pointerdown", startle);
+}
+
+let lastTime = performance.now();
+function moveCritters(now) {
+  const dt = Math.min((now - lastTime) / 1000, 0.1);
+  lastTime = now;
+  for (let i = critters.length - 1; i >= 0; i--) {
+    const c = critters[i];
+    c.x += c.dir * c.speed * dt;
+    // 걷는 모습 2장을 번갈아 보여줘요 (도망칠 때는 더 빠르게)
+    const frame = Math.floor(now / (c.scared ? 90 : 250)) % 2;
+    if (frame !== c.frame || !c.drawn) {
+      const g = c.body.getContext("2d");
+      g.clearRect(0, 0, c.body.width, c.body.height);
+      g.drawImage(c.kind.sprites[frame], 0, 0);
+      c.frame = frame;
+      c.drawn = true;
+    }
+    c.el.style.transform = `translateX(${Math.round(c.x)}px)`;
+    if (!c.body.getAnimations().length) c.body.style.transform = `scaleX(${c.dir})`;
+    // 화면 밖으로 나가면 정리
+    if (c.x < -200 || c.x > window.innerWidth + 200) {
+      c.el.remove();
+      critters.splice(i, 1);
+    }
+  }
+  requestAnimationFrame(moveCritters);
+}
+requestAnimationFrame(moveCritters);
+
+// 처음에는 2초 뒤에 한 마리, 그다음은 4~9초마다 한 마리씩
+setTimeout(spawnCritter, 2000);
+(function scheduleCritter() {
+  setTimeout(() => {
+    spawnCritter();
+    scheduleCritter();
+  }, 4000 + Math.random() * 5000);
+})();
 
 // ⚾ 이스터에그: 약 6초 동안 화면 전체가 홈런 축제가 돼요
 // - 번쩍! 하고 화면이 흔들려요

@@ -26,12 +26,31 @@
   --title-font: "Press Start 2P", "Galmuri11", monospace;
 }
 
+/* 아침: 위는 하늘색, 아래로 갈수록 복숭아빛 */
+:root[data-theme="morning"] {
+  --sky-1: #7ec8f0;
+  --sky-2: #ffd6b0;
+  --sky-3: #ffe9d6;
+}
+
+/* 저녁: 보라색 → 분홍 → 주황 노을 */
+:root[data-theme="evening"] {
+  --sky-1: #3b2a6b;
+  --sky-2: #c0517a;
+  --sky-3: #ff9e6d;
+  --jesus: rgba(255, 230, 210, 0.4);
+  --jesus-shadow: rgba(59, 42, 107, 0.35);
+}
+
+/* 계절마다 땅 색이 바뀌어요 (기본은 봄) */
+:root[data-season="summer"] { --ground-1: #3fae49; --ground-2: #2d7a34; }
+:root[data-season="autumn"] { --ground-1: #d9a441; --ground-2: #a0652a; }
+:root[data-season="winter"] { --ground-1: #f4f8ff; --ground-2: #b9c7dd; }
+
 :root[data-theme="night"] {
   --sky-1: #070b1f;
   --sky-2: #0f1838;
   --sky-3: #1b2752;
-  --ground-1: #1f4d3a;
-  --ground-2: #12302a;
   --panel: #1b2547;
   --field: #24305c;
   --ink: #05081a;
@@ -91,6 +110,29 @@ body {
   box-shadow: inset -12px -12px 0 #f4a000; /* 아래 오른쪽 그늘 */
 }
 
+/* 아침 해: 왼쪽 낮은 곳, 살짝 주황빛 */
+[data-theme="morning"] .sky-light {
+  top: 30%;
+  right: auto;
+  left: 8%;
+  background: #ffc857;
+  box-shadow: inset -12px -12px 0 #f08a24;
+}
+
+/* 저녁 해: 오른쪽 아래로 지는 커다란 주황 해 */
+[data-theme="evening"] .sky-light {
+  top: 58%;
+  width: 128px;
+  height: 128px;
+  background: #ff7b39;
+  box-shadow: inset -16px -16px 0 #e04e1b;
+}
+
+/* 비, 눈, 뇌우가 오면 해가 숨어요 */
+[data-weather="rain"] .sky-light,
+[data-weather="storm"] .sky-light,
+[data-weather="snow"] .sky-light { display: none; }
+
 [data-theme="night"] .sky-light {
   background: #f4f1d0;
   box-shadow:
@@ -122,7 +164,47 @@ body {
   to   { left: 110%; }
 }
 
+.cloud.c4 { top: 20%; left: -10%; transform: scale(3); animation-duration: 90s; animation-delay: -15s; }
+.cloud.c5 { top: 42%; left: -10%; transform: scale(2); animation-duration: 70s; animation-delay: -50s; }
+
+/* 맑은 날에는 구름 3개, 흐리거나 비·눈 오면 구름이 더 많고 회색이에요 */
+.cloud.extra { display: none; }
+[data-weather="cloudy"] .cloud.extra,
+[data-weather="rain"] .cloud.extra,
+[data-weather="storm"] .cloud.extra,
+[data-weather="snow"] .cloud.extra { display: block; }
+
+[data-weather="cloudy"] .cloud,
+[data-weather="snow"] .cloud { color: #dfe5ee; }
+[data-weather="rain"] .cloud,
+[data-weather="storm"] .cloud { color: #9aa3b5; }
+
+/* 저녁 구름은 노을빛 */
+[data-theme="evening"] .cloud { color: #ffc4b0; }
+
 [data-theme="night"] .cloud { display: none; }
+
+/* 흐리거나 비가 오면 하늘 전체가 회색빛으로 어두워져요 */
+.backdrop::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: #5a6378;
+  opacity: 0;
+}
+[data-weather="cloudy"] .backdrop::before { opacity: 0.25; }
+[data-weather="snow"] .backdrop::before { opacity: 0.2; }
+[data-weather="rain"] .backdrop::before { opacity: 0.45; }
+[data-weather="storm"] .backdrop::before { opacity: 0.6; }
+
+/* 계절·날씨 효과 (벚꽃잎, 낙엽, 눈, 비, 반딧불) */
+.weather {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+}
 
 /* 별: app.js가 작은 네모를 여기저기 뿌려요 (밤에만) */
 .stars { position: absolute; inset: 0; display: none; }
@@ -159,6 +241,10 @@ body {
   background:
     linear-gradient(180deg, var(--ground-1) 0 20px, var(--ground-2) 20px 100%);
 }
+
+/* 밤에는 땅도 어둡게 */
+[data-theme="night"] .ground { filter: brightness(0.4) saturate(0.8); }
+[data-theme="evening"] .ground { filter: brightness(0.8) sepia(0.2); }
 
 .ground::before {
   content: "";
@@ -215,7 +301,7 @@ body {
 h1 {
   margin: 0 0 12px;
   font-family: var(--title-font);
-  font-size: 22px;
+  font-size: 28px;
   line-height: 1.4;
   text-align: center;
   color: var(--text);
@@ -225,7 +311,7 @@ h1 {
 /* 제목 아래 작은 글씨 */
 .subtitle {
   margin: 0 0 24px;
-  font-size: 13px;
+  font-size: 15px;
   text-align: center;
   color: var(--muted);
 }
@@ -236,7 +322,7 @@ h1 {
   padding: 12px 14px;
   background: var(--field);
   border: 4px solid var(--accent-2);
-  font-size: 14px;
+  font-size: 16px;
   text-align: center;
   box-shadow: 4px 4px 0 var(--shadow);
 }
@@ -256,7 +342,7 @@ h1 {
 /* 마감일, 시간, 작성자 칸 */
 .new-todo .due {
   flex-wrap: wrap;
-  font-size: 12px;
+  font-size: 14px;
   color: var(--muted);
 }
 
@@ -279,14 +365,14 @@ h1 {
 
 .new-todo .due input {
   padding: 5px 8px;
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .new-todo .row > input {
   flex: 1;
   min-width: 0;
   padding: 12px 14px;
-  font-size: 15px;
+  font-size: 17px;
 }
 
 .new-todo input:focus { border-color: var(--accent); box-shadow: 3px 3px 0 var(--accent); }
@@ -295,7 +381,7 @@ h1 {
 .new-todo button {
   padding: 0 20px;
   font-family: var(--pixel-font);
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 700;
   color: #fff;
   background: var(--accent-2);
@@ -332,7 +418,7 @@ h1 {
 .filters button {
   padding: 6px 12px;
   font-family: var(--pixel-font);
-  font-size: 13px;
+  font-size: 15px;
   color: var(--text);
   background: var(--field);
   border: 3px solid var(--ink);
@@ -352,14 +438,14 @@ h1 {
 }
 
 .remaining {
-  font-size: 13px;
+  font-size: 15px;
   color: var(--muted);
 }
 
 /* 고른 버튼에 해당하는 할 일이 없을 때 */
 .filter-empty {
   margin: 20px 0 4px;
-  font-size: 14px;
+  font-size: 16px;
   text-align: center;
   color: var(--muted);
 }
@@ -426,7 +512,7 @@ h1 {
 }
 
 .todo-list .title {
-  font-size: 15px;
+  font-size: 18px;
   word-break: break-word;
   cursor: text;
 }
@@ -436,7 +522,7 @@ h1 {
   width: 100%;
   padding: 4px 8px;
   font-family: var(--pixel-font);
-  font-size: 15px;
+  font-size: 18px;
   color: var(--text);
   background: var(--panel);
   border: 3px solid var(--accent);
@@ -446,7 +532,7 @@ h1 {
 
 /* 작성자 이름: 할 일 아래 작은 글씨 */
 .todo-list .author {
-  font-size: 11px;
+  font-size: 13px;
   color: var(--muted);
 }
 
@@ -464,7 +550,7 @@ h1 {
 .todo-list .badge {
   flex-shrink: 0;
   padding: 4px 8px;
-  font-size: 12px;
+  font-size: 14px;
   color: #fff;
   background: var(--accent);
   border: 2px solid var(--ink);
@@ -496,7 +582,7 @@ h1 {
 /* 할 일이 없을 때 보이는 문구 */
 .empty {
   margin: 28px 0 8px;
-  font-size: 15px;
+  font-size: 17px;
   line-height: 1.6;
   text-align: center;
   color: var(--muted);
@@ -521,7 +607,7 @@ h1 {
   margin: -72px auto 96px;
   padding: 0 16px;
   max-width: 560px;
-  font-size: 12px;
+  font-size: 14px;
   text-align: center;
   color: var(--text);
   text-shadow: 2px 2px 0 var(--panel);
@@ -533,7 +619,7 @@ h1 {
     margin: 24px 16px 96px;
     padding: 24px 16px;
   }
-  h1 { font-size: 17px; }
+  h1 { font-size: 22px; }
   .sky-light { width: 64px; height: 64px; }
 }
 
@@ -611,7 +697,27 @@ h1 {
   box-shadow: inset 4px 4px 0 rgba(0, 0, 0, 0.15);
 }
 
-/* 공룡이 올라오는 자리: 화면 아래 가운데 */
+/* 공룡이 나올 때 화면을 어둡게 덮는 막 */
+.dino-dim {
+  position: fixed;
+  inset: 0;
+  z-index: 990;
+  pointer-events: none;
+  background: #000;
+  opacity: 0;
+}
+
+/* 갑자기 번쩍이는 빛 (처음엔 빨강, 고함칠 때 하양) */
+.dino-flash {
+  position: fixed;
+  inset: 0;
+  z-index: 1002;
+  pointer-events: none;
+  background: #ff2e2e;
+  opacity: 0;
+}
+
+/* 공룡이 튀어나오는 자리: 화면 아래 가운데, 화면을 꽉 채울 만큼 크게 */
 .dino-stage {
   position: fixed;
   left: 50%;
@@ -619,32 +725,85 @@ h1 {
   z-index: 1000;
   pointer-events: none;
   transform: translate(-50%, 100%);
+  transform-origin: 72% 18%; /* 머리 쪽을 중심으로 커져서, 덤빌 때 입과 눈이 화면 안에 보여요 */
 }
 
 .dino-stage canvas {
   display: block;
-  width: min(80vw, 80vh);
+  width: min(92vw, 84vh);
   height: auto;
   image-rendering: pixelated; /* 픽셀이 뭉개지지 않게 */
-  filter: drop-shadow(8px 8px 0 rgba(0, 0, 0, 0.35));
+  filter: drop-shadow(12px 12px 0 rgba(0, 0, 0, 0.45));
 }
 
-/* 공룡 말풍선 */
-.dino-bubble {
-  position: absolute;
-  top: -4%;
-  right: -12%;
+/* 고함 글씨: 화면 위쪽 가운데에 크게, 덜덜 떨려요 */
+.dino-shout {
+  position: fixed;
+  top: 6%;
+  left: 50%;
+  z-index: 1001;
   margin: 0;
-  padding: 10px 16px;
+  pointer-events: none;
   font-family: var(--pixel-font);
-  font-size: clamp(18px, 4vw, 36px);
+  font-size: clamp(44px, 10vw, 140px);
   font-weight: 700;
   white-space: nowrap;
-  color: #2b2d42;
-  background: #fff;
-  border: 4px solid #2b2d42;
-  box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.35);
+  color: #ff2e2e;
+  text-shadow:
+    5px 0 0 #2b2d42, -5px 0 0 #2b2d42, 0 5px 0 #2b2d42, 0 -5px 0 #2b2d42,
+    10px 10px 0 #2b2d42;
   opacity: 0;
+}
+
+/* ===== 🐾 땅 위를 지나가는 픽셀 친구들 ===== */
+.critters {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 56px; /* 땅 바로 위 */
+  height: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.critter {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  pointer-events: auto; /* 친구들은 건드릴 수 있어요 */
+  cursor: pointer;
+}
+
+.critter canvas {
+  display: block;
+  image-rendering: pixelated;
+  filter: drop-shadow(3px 3px 0 rgba(0, 0, 0, 0.3));
+}
+
+/* 놀랐을 때 머리 위에 뜨는 "!" */
+.critter-bubble {
+  position: absolute;
+  left: 50%;
+  bottom: 100%;
+  margin-bottom: 8px;
+  transform: translateX(-50%);
+  padding: 2px 8px;
+  font-family: var(--title-font);
+  font-size: 16px;
+  color: #ff2e2e;
+  background: #fff;
+  border: 3px solid #2b2d42;
+  visibility: hidden;
+}
+
+.critter.scared .critter-bubble {
+  visibility: visible;
+  animation: pop 0.25s steps(3);
+}
+
+@keyframes pop {
+  from { transform: translateX(-50%) scale(0); }
+  to   { transform: translateX(-50%) scale(1); }
 }
 
 /* 움직임을 줄이는 설정을 켠 사람에게는 배경 움직임 없이 */
