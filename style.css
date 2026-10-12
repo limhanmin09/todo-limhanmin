@@ -242,6 +242,44 @@ body {
     linear-gradient(180deg, var(--ground-1) 0 20px, var(--ground-2) 20px 100%);
 }
 
+/* 픽셀 연못: 땅에 파묻힌 계단 모양 물웅덩이 */
+.pond {
+  position: absolute;
+  left: 6%;
+  bottom: 6px;
+  width: 240px;
+  height: 52px;
+  background: #3d8fd6;
+  clip-path: polygon(
+    10% 0, 90% 0, 90% 15%, 97% 15%, 97% 40%, 100% 40%, 100% 70%, 95% 70%, 95% 88%,
+    85% 88%, 85% 100%, 15% 100%, 15% 88%, 5% 88%, 5% 70%, 0 70%, 0 40%, 3% 40%, 3% 15%, 10% 15%
+  );
+  box-shadow: inset 0 8px 0 #2a6fb0; /* 연못 안쪽 그늘 */
+}
+
+/* 물결: 짧은 하얀 줄이 깜빡여요 */
+.pond i {
+  position: absolute;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.7);
+  animation: ripple 1.6s steps(2) infinite;
+}
+.pond i:nth-child(1) { left: 20%; top: 40%; width: 32px; }
+.pond i:nth-child(2) { left: 55%; top: 60%; width: 24px; animation-delay: -0.8s; }
+.pond i:nth-child(3) { left: 38%; top: 75%; width: 16px; animation-delay: -0.4s; }
+
+@keyframes ripple {
+  from { opacity: 1; }
+  to   { opacity: 0.2; }
+}
+
+/* 겨울에는 꽁꽁 언 연못 */
+[data-season="winter"] .pond { background: #bfe0f7; box-shadow: inset 0 8px 0 #9ccbec; }
+[data-season="winter"] .pond i { background: #fff; animation: none; }
+
+[data-theme="night"] .pond { filter: brightness(0.5); }
+[data-theme="evening"] .pond { filter: brightness(0.85) sepia(0.25); }
+
 /* 밤에는 땅도 어둡게 */
 [data-theme="night"] .ground { filter: brightness(0.4) saturate(0.8); }
 [data-theme="evening"] .ground { filter: brightness(0.8) sepia(0.2); }

@@ -376,6 +376,9 @@ form.addEventListener("submit", (event) => {
   // 이스터에그: 할 일에 "야구"가 들어가면 폭죽 + 야구공과 배트
   if (text.includes("야구")) baseballParty();
 
+  // 이스터에그: 할 일에 "인택"이 들어가면 낚시꾼이 나와서 연못에 낚싯대를 던져요
+  if (text.includes("인택")) fishingParty();
+
   // 이스터에그: 할 일에 "진수"가 들어가면 오른쪽 위에 코 버튼이 생겨요
   if (text.includes("진수") && noseButton.hidden) {
     noseButton.hidden = false;
@@ -1021,6 +1024,258 @@ function baseballParty() {
     } else {
       window.removeEventListener("resize", resize);
       stage.remove();
+    }
+  }
+  requestAnimationFrame(frame);
+}
+
+// 🎣 이스터에그: 약 6.5초 동안 낚시 대참사
+// 1) 연못 옆 땅속에서 낚시꾼이 쑥 올라와요
+// 2) 낚싯대를 휘둘러 찌를 연못에 던지고, 찌가 까딱까딱
+// 3) 찌가 쏙 들어가는 순간 물이 펑! 물고기 수백 마리가 튀어나와 낚시꾼을 덮쳐요
+// 4) 물고기 산 위로 "살려줘~!" … 그리고 스르르 사라져요
+let fishingNow = false; // 낚시 중에 또 "인택"을 적어도 한 번만
+
+function fishingParty() {
+  if (fishingNow) return;
+  fishingNow = true;
+
+  const DURATION = 6500;
+  const pondEl = document.getElementById("pond");
+  const random = (min, max) => min + Math.random() * (max - min);
+
+  // 화면 전체를 덮는 판 (클릭은 그대로 통과해요)
+  const stage = document.createElement("div");
+  stage.className = "party";
+  const canvas = document.createElement("canvas");
+  stage.append(canvas);
+  document.body.append(stage);
+  const ctx = canvas.getContext("2d");
+  let W, H;
+  function resize() {
+    W = canvas.width = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+    ctx.imageSmoothingEnabled = false;
+  }
+  resize();
+  window.addEventListener("resize", resize);
+
+  // ----- 픽셀 그림 -----
+  // 낚시꾼 (왼쪽 연못을 바라봐요): H=모자, S=피부, K=눈·장화, B=조끼, P=바지
+  const fisher = makeSprite(
+    [
+      "...HHHHH....",
+      "..HHHHHHH...",
+      ".HHHHHHHHHH.",
+      "...SSSSS....",
+      "..KSSSSS....",
+      "...SSSSS....",
+      "....SSS.....",
+      "..BBBBBBB...",
+      ".SBBBBBBBB..",
+      "SSBBBBBBBB..",
+      "..BBBBBBBB..",
+      "..BBBBBBBB..",
+      "..PPPPPPP...",
+      "..PPP.PPP...",
+      "..PPP.PPP...",
+      "..PPP.PPP...",
+      "..KKK.KKK...",
+      ".KKKK.KKKK..",
+    ],
+    { H: "#6a994e", S: "#f2c79b", K: "#2b2d42", B: "#e07a5f", P: "#3d5a80" },
+    "#2b2d42"
+  );
+  const FISHER_SCALE = 6;
+  const fisherW = fisher.width * FISHER_SCALE;
+  const fisherH = fisher.height * FISHER_SCALE;
+
+  // 물고기 4가지 색 (오른쪽을 바라봐요)
+  const fishArt = [".FFF..F.", "FFFFF.FF", "FKFFFFF.", "FFFFF.FF", ".FFF..F."];
+  const fishSprites = ["#f4a259", "#4cc9f0", "#c0c7d6", "#ff8fab", "#ffd23f"].map((color) =>
+    makeSprite(fishArt, { F: color, K: "#2b2d42" }, "#2b2d42")
+  );
+
+  // ----- 위치 계산 (연못과 땅 기준) -----
+  function layout() {
+    const pond = pondEl.getBoundingClientRect();
+    const groundTop = H - 56;
+    return {
+      pondX: pond.left + pond.width / 2,
+      pondY: pond.top + pond.height * 0.45,
+      groundTop,
+      fisherX: pond.right + 40, // 낚시꾼 왼쪽 끝 x
+    };
+  }
+
+  // ----- 물고기 산 만들기 -----
+  // 물고기마다 "튀어나오는 시각"과 "떨어질 자리"를 미리 정해요.
+  // 나중에 나온 물고기일수록 산 위쪽에 쌓여서 낚시꾼이 점점 파묻혀요.
+  const FISH_COUNT = 260;
+  const BURST = 2300; // 물이 펑! 터지는 시각
+  const fishes = [];
+  for (let i = 0; i < FISH_COUNT; i++) {
+    const progress = i / FISH_COUNT;
+    fishes.push({
+      img: fishSprites[i % fishSprites.length],
+      launch: BURST + progress * 1700 + random(0, 80), // 1.7초 동안 계속 튀어나와요
+      flight: random(550, 900),
+      arc: random(120, 320), // 얼마나 높이 튀는지
+      scale: Math.round(random(4, 7)),
+      height: Math.pow(progress, 0.8) * fisherH * 1.5 * random(0.85, 1.1), // 산에서의 높이
+      side: random(-1, 1), // 산의 왼쪽/오른쪽
+      spin: random(-0.3, 0.3),
+      flip: Math.random() < 0.5,
+    });
+  }
+
+  const splashes = []; // 물보라 (파란 네모)
+  function splash(x, y, count, power) {
+    for (let i = 0; i < count; i++) {
+      const a = random(Math.PI * 1.1, Math.PI * 1.9); // 위쪽으로
+      const s = random(power * 0.4, power);
+      splashes.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 1, size: Math.random() < 0.3 ? 8 : 4 });
+    }
+  }
+
+  // 말풍선 (캔버스에 픽셀 글씨로 그려요)
+  function bubble(text, x, y, size) {
+    ctx.font = `700 ${size}px Galmuri11, "Press Start 2P", monospace`;
+    const w = ctx.measureText(text).width + size;
+    const h = size * 1.8;
+    const bx = Math.round(x - w / 2);
+    const by = Math.round(y - h);
+    ctx.fillStyle = "#2b2d42";
+    ctx.fillRect(bx - 4, by - 4, w + 8, h + 8);
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(bx, by, w, h);
+    ctx.fillStyle = "#2b2d42";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "center";
+    ctx.fillText(text, bx + w / 2, by + h / 2);
+  }
+
+  let burstDone = false;
+  const start = performance.now();
+
+  function frame(now) {
+    const t = now - start;
+    const L = layout();
+    ctx.clearRect(0, 0, W, H);
+    // 마지막 0.9초는 스르르 사라져요
+    ctx.globalAlpha = t > DURATION - 900 ? Math.max(0, (DURATION - t) / 900) : 1;
+
+    // 1) 낚시꾼이 땅속에서 쑥 (0~0.5초, 뚝뚝 끊어서)
+    const rise = Math.min(1, t / 500);
+    const riseStep = Math.floor(rise * 8) / 8;
+    const fx = Math.round(L.fisherX);
+    const fy = Math.round(L.groundTop - fisherH * riseStep);
+    // 땅 위로 나온 부분만 그려요
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, 0, W, L.groundTop);
+    ctx.clip();
+    ctx.drawImage(fisher, fx, fy, fisherW, fisherH);
+    ctx.restore();
+
+    // 2) 낚싯대: 손에서 위쪽으로 뻗어요. 0.9~1.3초에 뒤로 젖혔다 앞으로 휘둘러요
+    const handX = fx + FISHER_SCALE;
+    const handY = fy + FISHER_SCALE * 9.5;
+    let angle = -Math.PI * 0.6; // 기본: 왼쪽 위로
+    if (t > 900 && t < 1100) angle = -Math.PI * 0.35; // 뒤로 젖히기
+    else if (t >= 1100 && t < 1300) angle = -Math.PI * 0.8; // 앞으로 휘두르기
+    if (t > 500) {
+      const rodLen = 130;
+      const tipX = handX + Math.cos(angle) * rodLen;
+      const tipY = handY + Math.sin(angle) * rodLen;
+      ctx.fillStyle = "#7f5539";
+      for (let s = 0; s <= 1; s += 0.03) {
+        ctx.fillRect(Math.round(handX + (tipX - handX) * s), Math.round(handY + (tipY - handY) * s), 5, 5);
+      }
+
+      // 3) 찌: 1.3초부터 연못으로 날아가고, 까딱까딱, 2.1초에 쏙!
+      if (t > 1300) {
+        const fly = Math.min(1, (t - 1300) / 450);
+        let bx = tipX + (L.pondX - tipX) * fly;
+        let by = tipY + (L.pondY - tipY) * fly - Math.sin(fly * Math.PI) * 90;
+        if (fly >= 1) {
+          by += t < 2100 ? (Math.floor(t / 250) % 2) * 4 : 14; // 까딱까딱 → 쏙
+          if (t >= BURST) by = L.pondY + 30; // 터진 뒤엔 물속으로
+        }
+        // 낚싯줄 (하얀 점선)
+        ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
+        for (let s = 0; s <= 1; s += 0.02) {
+          const lx = tipX + (bx - tipX) * s;
+          const ly = tipY + (by - tipY) * s + Math.sin(s * Math.PI) * 20 * (1 - fly * 0.6);
+          ctx.fillRect(Math.round(lx), Math.round(ly), 2, 2);
+        }
+        if (t < BURST) {
+          ctx.fillStyle = "#ff2e2e";
+          ctx.fillRect(Math.round(bx) - 6, Math.round(by) - 6, 12, 6);
+          ctx.fillStyle = "#fff";
+          ctx.fillRect(Math.round(bx) - 6, Math.round(by), 12, 6);
+        }
+      }
+    }
+
+    // 말풍선: 기대 → 깜짝
+    if (t > 500 && t < 1300) bubble("오늘은 대어다!", fx + fisherW / 2, fy - 10, 18);
+    if (t > 2000 && t < BURST + 300) bubble("!!", fx + fisherW / 2, fy - 10, 26);
+
+    // 4) 펑! 물보라 + 화면 흔들림
+    if (t >= BURST && !burstDone) {
+      burstDone = true;
+      splash(L.pondX, L.pondY, 140, 22);
+      shakeScreen(900, 24);
+    }
+    if (t >= BURST && t < BURST + 1700 && Math.random() < 0.6) splash(L.pondX + random(-60, 60), L.pondY, 6, 14);
+
+    // 물보라 그리기
+    for (let i = splashes.length - 1; i >= 0; i--) {
+      const p = splashes[i];
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vy += 0.7;
+      p.life -= 0.02;
+      if (p.life <= 0 || p.y > H) { splashes.splice(i, 1); continue; }
+      ctx.fillStyle = Math.random() < 0.5 ? "#9fd3ff" : "#ffffff";
+      ctx.fillRect(Math.round(p.x / 4) * 4, Math.round(p.y / 4) * 4, p.size, p.size);
+    }
+
+    // 5) 물고기: 연못에서 튀어올라 포물선을 그리며 낚시꾼 위로 쌓여요
+    const pileX = fx + fisherW / 2;
+    for (const f of fishes) {
+      if (t < f.launch) continue;
+      const fw = f.img.width * f.scale;
+      const fh = f.img.height * f.scale;
+      const halfWidth = (fisherW * 0.9 + 70) * Math.pow(1 - Math.min(f.height / (fisherH * 1.6), 0.95), 0.7);
+      const endX = pileX + f.side * halfWidth;
+      const endY = L.groundTop - f.height - fh / 2;
+      const p = Math.min(1, (t - f.launch) / f.flight);
+      const x = L.pondX + (endX - L.pondX) * p;
+      const y = L.pondY + (endY - L.pondY) * p - Math.sin(p * Math.PI) * f.arc;
+      ctx.save();
+      ctx.translate(Math.round(x), Math.round(y));
+      // 날아가는 동안은 빙글빙글, 쌓인 뒤에는 파닥파닥
+      const wiggle = p < 1 ? f.spin * (t - f.launch) / 60 : Math.sin(t / 80 + f.side * 10) * 0.15;
+      ctx.rotate(Math.round(wiggle / (Math.PI / 8)) * (Math.PI / 8));
+      if (f.flip) ctx.scale(-1, 1);
+      ctx.drawImage(f.img, -fw / 2, -fh / 2, fw, fh);
+      ctx.restore();
+    }
+
+    // 6) 물고기 산 꼭대기에서 "살려줘~!"
+    if (t > BURST + 1900 && t < DURATION - 300) {
+      const shake = (Math.floor(t / 70) % 2) * 4 - 2;
+      bubble("살려줘~!", pileX + shake, L.groundTop - fisherH * 1.75, 24);
+    }
+
+    if (t < DURATION) {
+      requestAnimationFrame(frame);
+    } else {
+      window.removeEventListener("resize", resize);
+      stage.remove();
+      fishingNow = false;
     }
   }
   requestAnimationFrame(frame);
