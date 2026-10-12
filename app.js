@@ -66,8 +66,10 @@ function timeText(time) {
 function render() {
   list.innerHTML = "";
 
-  // 마감일이 가까운 순서로 정렬
-  const sorted = [...todos].sort((a, b) => dueTime(a) - dueTime(b));
+  // 완료한 할 일은 맨 아래로, 그 안에서는 마감일이 가까운 순서로 정렬
+  const sorted = [...todos].sort(
+    (a, b) => a.done - b.done || dueTime(a) - dueTime(b)
+  );
 
   sorted.forEach((todo) => {
     const li = document.createElement("li");
