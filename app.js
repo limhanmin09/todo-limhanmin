@@ -248,7 +248,101 @@ form.addEventListener("submit", (event) => {
 
   // 이스터에그: 할 일에 "야구"가 들어가면 폭죽 + 야구공과 배트
   if (text.includes("야구")) baseballParty();
+
+  // 이스터에그: 할 일에 "진수"가 들어가면 오른쪽 위에 코 버튼이 생겨요
+  if (text.includes("진수") && noseButton.hidden) {
+    noseButton.hidden = false;
+    noseButton.animate(
+      [{ transform: "scale(0)" }, { transform: "scale(1.4)" }, { transform: "scale(1)" }],
+      { duration: 400, easing: "steps(4)" }
+    );
+  }
 });
+
+// 🦖 코 버튼을 누르면 거대한 픽셀 공룡이 3초 동안 나왔다 들어가요
+const noseButton = document.getElementById("nose-btn");
+noseButton.addEventListener("click", showDino);
+
+let dinoShowing = false; // 공룡이 나와 있는 동안 또 누르면 무시
+
+function showDino() {
+  if (dinoShowing) return;
+  dinoShowing = true;
+
+  // 픽셀 공룡 그림: G=몸, E=눈 흰자, K=눈동자 (테두리는 자동으로 그려요)
+  const art = [
+    "..........GGGGGGGG..",
+    ".........GGEKGGGGGGG",
+    ".........GGGGGGGGGGG",
+    ".........GGGGGGGGGGG",
+    ".........GGGGGG.....",
+    ".........GGGGGGGGG..",
+    "G.......GGGGG.......",
+    "G......GGGGGG.......",
+    "GG....GGGGGGGGG.....",
+    "GGG..GGGGGGGG.G.....",
+    "GGGGGGGGGGGGG.......",
+    "GGGGGGGGGGGG........",
+    ".GGGGGGGGGGG........",
+    "..GGGGGGGGGG........",
+    "...GGGGGGGG.........",
+    "....GGG.GGG.........",
+    "....GG....G.........",
+    "....G.....G.........",
+    "....GG....GG........",
+  ];
+  const colors = { G: "#5cb85c", E: "#ffffff", K: "#2b2d42" };
+  const outline = "#1f5130";
+
+  const canvas = document.createElement("canvas");
+  canvas.width = art[0].length + 2; // 테두리 자리 1칸씩
+  canvas.height = art.length + 2;
+  const g = canvas.getContext("2d");
+  const filled = (x, y) => art[y]?.[x] && art[y][x] !== ".";
+  for (let y = -1; y <= art.length; y++) {
+    for (let x = -1; x <= art[0].length; x++) {
+      if (filled(x, y)) {
+        g.fillStyle = colors[art[y][x]];
+      } else if ([[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => filled(x + dx, y + dy))) {
+        g.fillStyle = outline;
+      } else {
+        continue;
+      }
+      g.fillRect(x + 1, y + 1, 1, 1);
+    }
+  }
+
+  // 화면 아래에서 솟아오르는 공룡 + 말풍선
+  const stage = document.createElement("div");
+  stage.className = "dino-stage";
+  const bubble = document.createElement("p");
+  bubble.className = "dino-bubble";
+  bubble.textContent = "크아앙!";
+  stage.append(canvas, bubble);
+  document.body.append(stage);
+
+  // 0~0.4초 솟아오름 → 2.4초 머무름 (살짝 들썩) → 마지막 0.6초 내려감 = 3초
+  stage.animate(
+    [
+      { transform: "translate(-50%, 100%)" },
+      { transform: "translate(-50%, 0)", offset: 0.13 },
+      { transform: "translate(-50%, -3%)", offset: 0.3 },
+      { transform: "translate(-50%, 0)", offset: 0.45 },
+      { transform: "translate(-50%, -3%)", offset: 0.6 },
+      { transform: "translate(-50%, 0)", offset: 0.8 },
+      { transform: "translate(-50%, 100%)" },
+    ],
+    { duration: 3000, easing: "steps(30)" } // 뚝뚝 끊어 움직여서 게임처럼
+  ).onfinish = () => {
+    stage.remove();
+    dinoShowing = false;
+  };
+
+  bubble.animate(
+    [{ opacity: 0 }, { opacity: 0, offset: 0.12 }, { opacity: 1, offset: 0.15 }, { opacity: 1, offset: 0.78 }, { opacity: 0, offset: 0.8 }],
+    { duration: 3000, fill: "forwards" }
+  );
+}
 
 // ⚾ 이스터에그: 약 6초 동안 화면 전체가 홈런 축제가 돼요
 // - 번쩍! 하고 화면이 흔들려요

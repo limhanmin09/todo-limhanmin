@@ -583,6 +583,70 @@ h1 {
   opacity: 0;
 }
 
+/* ===== 🦖 이스터에그: 코 버튼 + 공룡 ===== */
+
+/* 오른쪽 위 코 버튼 */
+.nose-btn {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 900;
+  width: 56px;
+  height: 56px;
+  font-size: 28px;
+  line-height: 1;
+  background: var(--panel);
+  border: 4px solid var(--ink);
+  border-radius: 0;
+  cursor: pointer;
+  box-shadow: inset -4px -4px 0 rgba(0, 0, 0, 0.15), 4px 4px 0 var(--ink);
+}
+
+.nose-btn[hidden] { display: none; }
+
+.nose-btn:hover { background: var(--accent); }
+
+.nose-btn:active {
+  transform: translate(4px, 4px);
+  box-shadow: inset 4px 4px 0 rgba(0, 0, 0, 0.15);
+}
+
+/* 공룡이 올라오는 자리: 화면 아래 가운데 */
+.dino-stage {
+  position: fixed;
+  left: 50%;
+  bottom: 0;
+  z-index: 1000;
+  pointer-events: none;
+  transform: translate(-50%, 100%);
+}
+
+.dino-stage canvas {
+  display: block;
+  width: min(80vw, 80vh);
+  height: auto;
+  image-rendering: pixelated; /* 픽셀이 뭉개지지 않게 */
+  filter: drop-shadow(8px 8px 0 rgba(0, 0, 0, 0.35));
+}
+
+/* 공룡 말풍선 */
+.dino-bubble {
+  position: absolute;
+  top: -4%;
+  right: -12%;
+  margin: 0;
+  padding: 10px 16px;
+  font-family: var(--pixel-font);
+  font-size: clamp(18px, 4vw, 36px);
+  font-weight: 700;
+  white-space: nowrap;
+  color: #2b2d42;
+  background: #fff;
+  border: 4px solid #2b2d42;
+  box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.35);
+  opacity: 0;
+}
+
 /* 움직임을 줄이는 설정을 켠 사람에게는 배경 움직임 없이 */
 @media (prefers-reduced-motion: reduce) {
   .cloud, .stars i, .empty::before { animation: none; }
