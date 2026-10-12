@@ -1187,6 +1187,83 @@ h1 {
   .cat-zone { display: none; }
 }
 
+/* ===== 🌱 "삭준": 화면 가운데 커다란 "싹" (1초 동안 스르르 나타났다 사라져요) ===== */
+.sak-text {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 1001;
+  margin: 0;
+  pointer-events: none;
+  font-family: var(--pixel-font);
+  font-size: clamp(160px, 40vw, 520px);
+  font-weight: 700;
+  line-height: 1;
+  color: #7bd389;
+  text-shadow:
+    0.04em 0 0 #1f5130, -0.04em 0 0 #1f5130, 0 0.04em 0 #1f5130, 0 -0.04em 0 #1f5130,
+    0.08em 0.08em 0 #1f5130;
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  animation: sak-fade 1s steps(10) forwards;
+}
+
+@keyframes sak-fade {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+  30%  { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  70%  { opacity: 1; transform: translate(-50%, -50%) scale(1.05); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.15); }
+}
+
+/* ===== 🐶 "예성": 팻말 든 강아지 ===== */
+.puppy {
+  position: fixed;
+  left: 0;
+  bottom: 56px; /* 땅 바로 위 */
+  z-index: 950;
+  pointer-events: none;
+}
+
+.puppy canvas {
+  display: block;
+  image-rendering: pixelated;
+  filter: drop-shadow(4px 4px 0 rgba(0, 0, 0, 0.3));
+}
+
+/* 입에 문 막대 + 나무 팻말 */
+.puppy-sign {
+  position: absolute;
+  left: 43px;  /* 막대가 강아지 입 위치에 오도록 */
+  bottom: 46px;
+  width: 96px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.puppy-sign span {
+  display: block;
+  padding: 8px 14px;
+  font-family: var(--pixel-font);
+  font-size: 30px;
+  font-weight: 700;
+  white-space: nowrap;
+  color: #2b2d42;
+  background: repeating-linear-gradient(180deg, #e9c46a 0 10px, #d4a84f 10px 12px);
+  border: 4px solid #5c3d2e;
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.3);
+}
+
+.puppy-sign::after {
+  content: "";
+  display: block;
+  width: 6px;
+  height: 56px;
+  background: #8b5a2b;
+  border: 2px solid #5c3d2e;
+  border-top: 0;
+}
+
 /* 움직임을 줄이는 설정을 켠 사람에게는 배경 움직임 없이 */
 @media (prefers-reduced-motion: reduce) {
   .cloud, .stars i, .empty::before { animation: none; }

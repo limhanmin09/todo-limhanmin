@@ -382,6 +382,9 @@ form.addEventListener("submit", (event) => {
   // 이스터에그: 할 일에 "삭준"이 들어가면 나무가 쑥 커지고 미친 돼지가 질주해요
   if (text.includes("삭준")) sakjunParty();
 
+  // 이스터에그: 할 일에 "예성"이 들어가면 "1꿇" 팻말을 든 강아지가 지나가요
+  if (text.includes("예성")) yesungPuppy();
+
   // 이스터에그: 할 일에 "진수"가 들어가면 오른쪽 위에 코 버튼이 생겨요
   if (text.includes("진수") && noseButton.hidden) {
     noseButton.hidden = false;
@@ -1374,7 +1377,7 @@ setInterval(() => {
   ).onfinish = () => fish.remove();
 }, 5000);
 
-// ===== 🐱 내 고양이 "냥이" =====
+// ===== 🐱 내 고양이 "보리" =====
 // 배부름·목마름·기분은 0~100. 시간이 지나면 조금씩 줄어요 (새로고침하면 처음으로).
 const cat = {
   full: 70,
@@ -1458,7 +1461,7 @@ function beHappy(ms) {
   }, ms + 20);
 }
 
-// 쓰다듬기: 하트가 뿅뿅, 골골골~
+// 쓰다듬기 (보리를 직접 누르면): 하트가 뿅뿅, 골골골~
 let lastPet = 0;
 function petCat() {
   if (Date.now() - lastPet < 500) return;
@@ -1487,6 +1490,42 @@ function petCat() {
       { duration: 900 + i * 150, easing: "steps(8)" }
     ).onfinish = () => heart.remove();
   }
+}
+
+// 놀아주기: 장난감이 마구 흔들리고 보리가 폴짝폴짝 세 번 뛰어요
+// 신나게 놀면 기분은 오르고, 배와 목은 조금 고파져요
+let lastPlay = 0;
+function playCat() {
+  if (Date.now() - lastPlay < 1200) return;
+  if (cat.busy) {
+    catSay("먹는 중이다옹!");
+    return;
+  }
+  lastPlay = Date.now();
+  cat.mood = clamp(cat.mood + 15);
+  cat.full = clamp(cat.full - 3);
+  cat.water = clamp(cat.water - 3);
+  updateGauges();
+  beHappy(1800);
+  catSay(pick(["냥냥! 신난다옹!", "잡았다옹!", "한 번 더 하자옹!", "우다다다!"]));
+
+  // 장난감이 빠르게 휙휙
+  document.querySelector(".ct-toy").animate(
+    [{ transform: "rotate(-35deg)" }, { transform: "rotate(35deg)" }, { transform: "rotate(-25deg)" }, { transform: "rotate(25deg)" }, { transform: "rotate(0deg)" }],
+    { duration: 900, easing: "steps(8)" }
+  );
+
+  // 보리가 폴짝폴짝 세 번 (뚝뚝 끊어서)
+  const start = performance.now();
+  function hop(now) {
+    const t = Math.max(0, now - start);
+    const p = Math.min(1, t / 900);
+    const height = Math.abs(Math.sin(p * Math.PI * 3)) * 28; // 세 번 튀어오르기
+    catCanvas.style.transform = `translateY(${-Math.round(height / 4) * 4}px)`;
+    if (p < 1) requestAnimationFrame(hop);
+    else catCanvas.style.transform = "";
+  }
+  requestAnimationFrame(hop);
 }
 
 function pick(list) {
@@ -1549,7 +1588,7 @@ async function serve(kind) {
 }
 
 catCanvas.addEventListener("click", petCat);
-document.getElementById("btn-pet").addEventListener("click", petCat);
+document.getElementById("btn-play").addEventListener("click", playCat);
 document.getElementById("btn-feed").addEventListener("click", () => serve("food"));
 document.getElementById("btn-water").addEventListener("click", () => serve("water"));
 
@@ -1601,6 +1640,13 @@ function sakjunParty() {
       { duration: 1000, easing: "steps(12)" }
     );
   }
+
+  // 나무가 커지는 1초 동안 화면 가운데에 커다란 "싹"이 스르르 나타났다 사라져요
+  const sak = document.createElement("p");
+  sak.className = "sak-text";
+  sak.textContent = "싹";
+  document.body.append(sak);
+  setTimeout(() => sak.remove(), 1000);
 
   // 2) 1초 뒤 돼지 질주 (약 1.8초)
   setTimeout(runPig, 1000);
@@ -1690,4 +1736,68 @@ function runPig() {
     }
   }
   requestAnimationFrame(frame);
+}
+
+// ===== 🐶 "예성" 이스터에그 =====
+// "1꿇" 팻말을 입에 문 강아지가 왼쪽에서 오른쪽으로 총총총 지나가요 (약 6초)
+const puppyColors = { B: "#c68642", W: "#fff3e0", K: "#2b2d42", E: "#8b5a2b" };
+const puppyBody = [
+  "..........BB..",
+  ".........BBBB.",
+  "........EBBKBB",
+  "B.......EBBBBK",
+  "B.......BBBWW.",
+  ".BBBBBBBBBBB..",
+  ".BBBBBBBBBBB..",
+  ".BWWWWWWWBB...",
+];
+const puppyFrames = [
+  makeSprite([...puppyBody, ".B.B....B.B...", ".B.B....B.B..."], puppyColors, "#5c3d2e"),
+  makeSprite([...puppyBody, "..B.B..B.B....", "..B.B..B.B...."], puppyColors, "#5c3d2e"),
+];
+let puppyNow = false;
+
+function yesungPuppy() {
+  if (puppyNow) return;
+  puppyNow = true;
+
+  const SCALE = 7;
+  const el = document.createElement("div");
+  el.className = "puppy";
+  const sign = document.createElement("div");
+  sign.className = "puppy-sign";
+  sign.innerHTML = "<span>1꿇</span>";
+  const body = document.createElement("canvas");
+  body.width = puppyFrames[0].width;
+  body.height = puppyFrames[0].height;
+  body.style.width = `${body.width * SCALE}px`;
+  body.style.height = `${body.height * SCALE}px`;
+  el.append(sign, body);
+  document.body.append(el);
+
+  const g = body.getContext("2d");
+  const width = body.width * SCALE;
+  const DURATION = 6000;
+  const start = performance.now();
+  let frame = -1;
+
+  function walk(now) {
+    const t = Math.max(0, now - start);
+    const p = Math.min(1, t / DURATION);
+    const x = -width - 40 + (window.innerWidth + width + 80) * p; // 왼쪽 → 오른쪽
+    const bounce = (Math.floor(t / 150) % 2) * 4; // 총총총
+    el.style.transform = `translate(${Math.round(x)}px, ${-bounce}px)`;
+    const f = Math.floor(t / 150) % 2;
+    if (f !== frame) {
+      g.clearRect(0, 0, body.width, body.height);
+      g.drawImage(puppyFrames[f], 0, 0);
+      frame = f;
+    }
+    if (p < 1) requestAnimationFrame(walk);
+    else {
+      el.remove();
+      puppyNow = false;
+    }
+  }
+  requestAnimationFrame(walk);
 }
