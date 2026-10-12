@@ -230,84 +230,304 @@ form.addEventListener("submit", (event) => {
   if (text.includes("야구")) baseballParty();
 });
 
-// ⚾ 이스터에그: 약 6초 동안 폭죽이 터지고 야구공과 배트가 날아다녀요
+// ⚾ 이스터에그: 약 6초 동안 화면 전체가 홈런 축제가 돼요
+// - 번쩍! 하고 화면이 흔들려요
+// - 폭죽이 화면 아래에서 쏘아 올라가 크게 터져요
+// - 픽셀 야구공과 배트가 수십 개 빙글빙글 날아다녀요
+// - 거대한 야구공이 화면 쪽으로 날아오고 "HOME RUN!" 글씨가 쾅 찍혀요
 function baseballParty() {
   const DURATION = 6000; // 전체 길이 (밀리초)
-  const colors = ["#ffadad", "#8ec5f5", "#ffd166", "#b8f2c9", "#ff8a8a", "#ffffff"];
+  const PX = 4; // 픽셀 한 칸 크기 (폭죽 불꽃을 이 크기 칸에 맞춰 그려요)
+  const colors = ["#ff8a8a", "#ff4d6d", "#8ec5f5", "#4cc9f0", "#ffd166", "#ffffff", "#b8f2c9"];
+  const random = (min, max) => min + Math.random() * (max - min);
+  const pick = (list) => list[Math.floor(Math.random() * list.length)];
 
-  // 화면 전체를 덮는 투명한 판 (클릭은 그대로 통과해요)
+  // 화면 전체를 덮는 판 (클릭은 그대로 통과해요)
   const stage = document.createElement("div");
   stage.className = "party";
+  const canvas = document.createElement("canvas");
+  const flash = document.createElement("div");
+  flash.className = "flash";
+  const homerun = document.createElement("p");
+  homerun.className = "homerun";
+  homerun.textContent = "HOME RUN!";
+  stage.append(canvas, flash, homerun);
   document.body.append(stage);
 
-  const random = (min, max) => min + Math.random() * (max - min);
+  const ctx = canvas.getContext("2d");
+  let W, H;
+  function resize() {
+    W = canvas.width = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+    ctx.imageSmoothingEnabled = false; // 픽셀이 뭉개지지 않게
+  }
+  resize();
+  window.addEventListener("resize", resize);
 
-  // 폭죽 하나: 한 점에서 작은 불꽃들이 사방으로 퍼져요
-  function firework() {
-    const x = random(10, 90); // 화면 가로 위치 (%)
-    const y = random(10, 60); // 화면 세로 위치 (%)
-    const color = colors[Math.floor(Math.random() * colors.length)];
+  // ----- 픽셀 그림 (야구공, 배트) -----
+  // 글자 하나가 픽셀 한 칸이에요. X=테두리, W=흰색, R=빨간 실밥
+  const ballArt = [
+    "....XXXX....",
+    "..XXWWWWXX..",
+    ".XWRWWWWRWX.",
+    ".XRWWWWWWRX.",
+    "XWRWWWWWWRWX",
+    "XRWWWWWWWWRX",
+    "XRWWWWWWWWRX",
+    "XWRWWWWWWRWX",
+    ".XRWWWWWWRX.",
+    ".XWRWWWWRWX.",
+    "..XXWWWWXX..",
+    "....XXXX....",
+  ];
+  const palette = { X: "#2b2d42", W: "#ffffff", R: "#e63946" };
 
-    for (let i = 0; i < 24; i++) {
-      const spark = document.createElement("span");
-      spark.className = "spark";
-      spark.style.left = `${x}vw`;
-      spark.style.top = `${y}vh`;
-      spark.style.background = color;
-      stage.append(spark);
+  function spriteFromArt(art) {
+    const c = document.createElement("canvas");
+    c.width = art[0].length;
+    c.height = art.length;
+    const g = c.getContext("2d");
+    art.forEach((row, y) =>
+      [...row].forEach((ch, x) => {
+        if (palette[ch]) {
+          g.fillStyle = palette[ch];
+          g.fillRect(x, y, 1, 1);
+        }
+      })
+    );
+    return c;
+  }
 
-      const angle = (Math.PI * 2 * i) / 24;
-      const distance = random(60, 140);
-      spark.animate(
-        [
-          { transform: "translate(0, 0) scale(1)", opacity: 1 },
-          {
-            transform: `translate(${Math.cos(angle) * distance}px, ${Math.sin(angle) * distance + 40}px) scale(0.3)`,
-            opacity: 0,
-          },
-        ],
-        { duration: random(900, 1300), easing: "cubic-bezier(0.2, 0.7, 0.4, 1)" }
-      ).onfinish = () => spark.remove();
+  // 배트는 대각선으로 점점 굵어지게 계산해서 그려요
+  function batSprite() {
+    const S = 16;
+    const c = document.createElement("canvas");
+    c.width = c.height = S;
+    const g = c.getContext("2d");
+    const cells = []; // 0=빈칸, 1=나무, 2=손잡이 테이프
+    for (let y = 0; y < S; y++) cells.push(new Array(S).fill(0));
+    for (let t = 0; t <= 1; t += 0.01) {
+      const cx = 2 + t * 11.5;
+      const cy = 13 - t * 11.5;
+      const r = t < 0.35 ? 0.7 : 0.7 + (t - 0.35) * 2.4;
+      for (let y = 0; y < S; y++)
+        for (let x = 0; x < S; x++)
+          if (Math.hypot(x + 0.5 - cx, y + 0.5 - cy) <= r) cells[y][x] = t < 0.3 ? 2 : 1;
+    }
+    cells[14][1] = cells[14][2] = cells[13][1] = 2; // 손잡이 끝 둥근 부분
+    for (let y = 0; y < S; y++)
+      for (let x = 0; x < S; x++) {
+        if (cells[y][x]) {
+          g.fillStyle = cells[y][x] === 2 ? "#3a3a3a" : "#d9a066";
+          g.fillRect(x, y, 1, 1);
+        } else if (
+          [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => cells[y + dy]?.[x + dx] === 1)
+        ) {
+          g.fillStyle = "#6b3e1f"; // 나무 테두리
+          g.fillRect(x, y, 1, 1);
+        }
+      }
+    return c;
+  }
+
+  const ball = spriteFromArt(ballArt);
+  const bat = batSprite();
+
+  // ----- 움직이는 것들 -----
+  const sparks = [];   // 폭죽 불꽃
+  const rockets = [];  // 올라가는 폭죽
+  const flyers = [];   // 날아다니는 공, 배트
+  const confetti = []; // 위에서 쏟아지는 색종이
+
+  function launchRocket() {
+    rockets.push({
+      x: random(W * 0.1, W * 0.9),
+      y: H + 10,
+      vy: -random(H * 0.018, H * 0.026),
+      targetY: random(H * 0.12, H * 0.5),
+      color: pick(colors),
+    });
+  }
+
+  function explode(x, y, color) {
+    const count = Math.round(random(90, 150));
+    const power = Math.min(W, H) * random(0.011, 0.017);
+    const second = pick(colors);
+    for (let i = 0; i < count; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = power * Math.sqrt(Math.random());
+      sparks.push({
+        x, y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        life: 1,
+        decay: random(0.012, 0.022),
+        color: Math.random() < 0.75 ? color : second,
+        size: pick([PX, PX, PX * 2]),
+      });
     }
   }
 
-  // 야구공이나 배트 하나: 화면 한쪽에서 반대쪽으로 빙글빙글 날아가요
-  function flyer() {
-    const item = document.createElement("span");
-    item.className = "flyer";
-    item.textContent = Math.random() < 0.6 ? "⚾" : "🏏";
-    item.style.fontSize = `${random(28, 56)}px`;
-    stage.append(item);
-
+  function launchFlyer() {
     const fromLeft = Math.random() < 0.5;
-    const startX = fromLeft ? -10 : 110;
-    const endX = fromLeft ? 110 : -10;
-    const startY = random(20, 100);
-    const endY = random(-10, 60);
-    const spin = random(360, 1080) * (fromLeft ? 1 : -1);
-
-    item.animate(
-      [
-        { transform: `translate(${startX}vw, ${startY}vh) rotate(0deg)` },
-        { transform: `translate(${(startX + endX) / 2}vw, ${Math.min(startY, endY) - 25}vh) rotate(${spin / 2}deg)` },
-        { transform: `translate(${endX}vw, ${endY}vh) rotate(${spin}deg)` },
-      ],
-      { duration: random(1400, 2400), easing: "ease-in-out" }
-    ).onfinish = () => item.remove();
+    flyers.push({
+      img: Math.random() < 0.55 ? ball : bat,
+      x: fromLeft ? -100 : W + 100,
+      y: random(H * 0.3, H * 1.0),
+      vx: (fromLeft ? 1 : -1) * random(W * 0.006, W * 0.012),
+      vy: -random(H * 0.012, H * 0.024),
+      rot: random(0, Math.PI * 2),
+      spin: random(0.08, 0.3) * (Math.random() < 0.5 ? 1 : -1),
+      scale: Math.round(random(3, 9)), // 픽셀 한 칸을 몇 배로 키울지
+    });
   }
 
-  // 끝나기 1.5초 전까지 계속 새로 터뜨리고 날려요
-  const fireworkTimer = setInterval(firework, 350);
-  const flyerTimer = setInterval(flyer, 120);
-  firework();
+  function dropConfetti() {
+    confetti.push({
+      x: random(0, W),
+      y: -20,
+      vy: random(2, 5),
+      sway: random(0, Math.PI * 2),
+      color: pick(colors),
+      size: pick([PX, PX * 2]),
+    });
+  }
 
+  // ----- 큰 장면 연출 -----
+  // 1) 시작: 번쩍 + 화면 흔들림
+  const shake = [
+    { transform: "translate(0, 0)" },
+    { transform: "translate(-14px, 8px)" },
+    { transform: "translate(12px, -10px)" },
+    { transform: "translate(-8px, -6px)" },
+    { transform: "translate(6px, 8px)" },
+    { transform: "translate(0, 0)" },
+  ];
+  function boom(strength) {
+    flash.animate([{ opacity: strength }, { opacity: 0 }], { duration: 650, easing: "ease-out" });
+    document.querySelector(".app").animate(shake, { duration: 550 });
+    document.querySelector(".backdrop")?.animate(shake, { duration: 550 });
+  }
+  boom(0.85);
+
+  // 처음부터 폭죽 여러 개를 한꺼번에 터뜨려요
+  for (let i = 0; i < 5; i++) explode(random(W * 0.15, W * 0.85), random(H * 0.15, H * 0.55), pick(colors));
+
+  // 2) 거대한 야구공이 멀리서 화면 쪽으로 날아와요 (0.6초 ~ 2.0초)
+  const giant = { start: 600, end: 2000 };
+
+  // 3) 공이 화면에 닿는 순간 "HOME RUN!" 쾅 + 한 번 더 번쩍
   setTimeout(() => {
-    clearInterval(fireworkTimer);
-    clearInterval(flyerTimer);
-  }, DURATION - 1500);
+    boom(1);
+    for (let i = 0; i < 6; i++) explode(random(W * 0.1, W * 0.9), random(H * 0.1, H * 0.6), pick(colors));
+    homerun.animate(
+      [
+        { transform: "translate(-50%, -50%) scale(4) rotate(-8deg)", opacity: 0 },
+        { transform: "translate(-50%, -50%) scale(0.9) rotate(-4deg)", opacity: 1, offset: 0.12 },
+        { transform: "translate(-50%, -50%) scale(1.06) rotate(-4deg)", opacity: 1, offset: 0.2 },
+        { transform: "translate(-50%, -50%) scale(1) rotate(-4deg)", opacity: 1, offset: 0.85 },
+        { transform: "translate(-50%, -50%) scale(1.3) rotate(-4deg)", opacity: 0 },
+      ],
+      { duration: 3400, easing: "ease-out", fill: "forwards" }
+    );
+  }, giant.end);
 
-  // 다 끝나면 판을 치워요
-  setTimeout(() => stage.remove(), DURATION);
+  // 계속 새로 쏘아 올리고 날려요 (끝나기 1.2초 전까지)
+  const timers = [
+    setInterval(launchRocket, 260),
+    setInterval(launchFlyer, 70),
+    setInterval(() => { for (let i = 0; i < 6; i++) dropConfetti(); }, 50),
+  ];
+  setTimeout(() => timers.forEach(clearInterval), DURATION - 1200);
+
+  // ----- 매 화면마다 그리기 -----
+  const startTime = performance.now();
+  const snap = (v) => Math.round(v / PX) * PX; // 픽셀 칸에 맞추기
+
+  function frame(now) {
+    const elapsed = now - startTime;
+
+    // 이전 화면을 살짝 남겨서 꼬리가 생기게 해요
+    ctx.globalCompositeOperation = "destination-out";
+    ctx.fillStyle = "rgba(0, 0, 0, 0.28)";
+    ctx.fillRect(0, 0, W, H);
+    ctx.globalCompositeOperation = "source-over";
+
+    // 올라가는 폭죽
+    for (let i = rockets.length - 1; i >= 0; i--) {
+      const r = rockets[i];
+      r.y += r.vy;
+      ctx.fillStyle = r.color;
+      ctx.fillRect(snap(r.x), snap(r.y), PX, PX * 3);
+      if (r.y <= r.targetY) {
+        explode(r.x, r.y, r.color);
+        rockets.splice(i, 1);
+      }
+    }
+
+    // 폭죽 불꽃 (중력으로 천천히 떨어져요)
+    ctx.globalCompositeOperation = "lighter";
+    for (let i = sparks.length - 1; i >= 0; i--) {
+      const s = sparks[i];
+      s.vx *= 0.96;
+      s.vy = s.vy * 0.96 + 0.12;
+      s.x += s.vx;
+      s.y += s.vy;
+      s.life -= s.decay;
+      if (s.life <= 0) { sparks.splice(i, 1); continue; }
+      ctx.globalAlpha = s.life > 0.3 ? 1 : s.life / 0.3;
+      if (Math.random() < 0.08) ctx.globalAlpha *= 0.3; // 반짝반짝
+      ctx.fillStyle = s.color;
+      ctx.fillRect(snap(s.x), snap(s.y), s.size, s.size);
+    }
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = "source-over";
+
+    // 색종이
+    for (let i = confetti.length - 1; i >= 0; i--) {
+      const c = confetti[i];
+      c.y += c.vy;
+      c.sway += 0.08;
+      if (c.y > H + 20) { confetti.splice(i, 1); continue; }
+      ctx.fillStyle = c.color;
+      ctx.fillRect(snap(c.x + Math.sin(c.sway) * 12), snap(c.y), c.size, c.size);
+    }
+
+    // 날아다니는 공, 배트 (포물선을 그리며 빙글빙글)
+    for (let i = flyers.length - 1; i >= 0; i--) {
+      const f = flyers[i];
+      f.x += f.vx;
+      f.y += f.vy;
+      f.vy += H * 0.0004;
+      f.rot += f.spin;
+      if (f.y > H + 200 || f.x < -300 || f.x > W + 300) { flyers.splice(i, 1); continue; }
+      const size = f.img.width * f.scale;
+      ctx.save();
+      ctx.translate(f.x, f.y);
+      ctx.rotate(Math.round(f.rot / (Math.PI / 8)) * (Math.PI / 8)); // 8방향씩 끊어 돌아서 게임처럼
+      ctx.drawImage(f.img, -size / 2, -size / 2, size, size);
+      ctx.restore();
+    }
+
+    // 거대한 야구공: 작게 시작해서 화면을 가득 채울 만큼 커져요
+    if (elapsed >= giant.start && elapsed <= giant.end) {
+      const t = (elapsed - giant.start) / (giant.end - giant.start);
+      const eased = t * t * t; // 처음엔 천천히, 마지막에 확!
+      const size = Math.max(W, H) * (0.05 + eased * 1.6);
+      ctx.save();
+      ctx.translate(W * (0.75 - 0.25 * t), H * (0.25 + 0.25 * t));
+      ctx.rotate(Math.round((t * 6) / (Math.PI / 8)) * (Math.PI / 8));
+      ctx.globalAlpha = t > 0.92 ? (1 - t) / 0.08 : 1;
+      ctx.drawImage(ball, -size / 2, -size / 2, size, size);
+      ctx.restore();
+    }
+
+    if (elapsed < DURATION) {
+      requestAnimationFrame(frame);
+    } else {
+      window.removeEventListener("resize", resize);
+      stage.remove();
+    }
+  }
+  requestAnimationFrame(frame);
 }
-
-render();

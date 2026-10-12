@@ -1,12 +1,16 @@
 /* 색깔 모음: 여기 값만 바꾸면 전체 색이 바뀌어요 */
 :root {
-  --sky: #bde0fe;        /* 파스텔 하늘색 */
-  --sky-light: #e3f2ff;  /* 더 연한 하늘색 */
-  --sky-deep: #8ec5f5;   /* 조금 진한 하늘색 (테두리, 강조) */
-  --red: #ffadad;        /* 연한 빨간색 */
-  --red-deep: #ff8a8a;   /* 조금 진한 빨간색 (눌렀을 때) */
-  --text: #3d4a5c;       /* 글자색 */
-  --muted: #a3b1c2;      /* 흐린 글자색 */
+  --night-top: #0d1a3a;     /* 밤하늘 위쪽 (깊은 남색) */
+  --night-bottom: #03060f;  /* 밤하늘 아래쪽 (거의 검정) */
+  --glass: rgba(255, 255, 255, 0.06);        /* 유리 카드 바탕 */
+  --glass-strong: rgba(255, 255, 255, 0.1);  /* 조금 더 밝은 유리 */
+  --line: rgba(189, 224, 254, 0.16);         /* 얇은 테두리 */
+  --sky: #8ec5f5;           /* 포인트: 하늘색 빛 */
+  --sky-glow: rgba(142, 197, 245, 0.45);
+  --red: #ff8a8a;           /* 포인트: 연한 빨간 빛 */
+  --red-glow: rgba(255, 138, 138, 0.45);
+  --text: #eaf2ff;          /* 글자색 */
+  --muted: #8a9bb8;         /* 흐린 글자색 */
 }
 
 * { box-sizing: border-box; }
@@ -14,48 +18,139 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background: linear-gradient(160deg, var(--sky-light) 0%, var(--sky) 60%, #ffd6d6 100%);
+  background:
+    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(142, 197, 245, 0.18), transparent 70%),
+    radial-gradient(ellipse 60% 40% at 85% 100%, rgba(255, 138, 138, 0.1), transparent 70%),
+    linear-gradient(180deg, var(--night-top) 0%, var(--night-bottom) 100%);
+  background-attachment: fixed;
   color: var(--text);
+  color-scheme: dark; /* 날짜·시간 고르는 창도 어둡게 */
   font-family: "Segoe UI", "Malgun Gothic", system-ui, sans-serif;
+  overflow-x: hidden;
 }
 
-/* 가운데 둥근 카드 */
+/* ===== 배경: 별 + 카드 뒤 큰 글씨 ===== */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* 별: 작은 점들을 반복해서 깔아요 */
+.stars {
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(1.5px 1.5px at 20px 30px, #fff, transparent),
+    radial-gradient(1px 1px at 120px 80px, #fff, transparent),
+    radial-gradient(1.5px 1.5px at 200px 160px, var(--sky), transparent),
+    radial-gradient(1px 1px at 60px 190px, #fff, transparent),
+    radial-gradient(1px 1px at 260px 40px, #fff, transparent),
+    radial-gradient(1.5px 1.5px at 170px 230px, #fff, transparent);
+  background-size: 300px 260px;
+  animation: twinkle 5s ease-in-out infinite alternate;
+}
+
+.stars.far {
+  background-size: 180px 170px;
+  opacity: 0.35;
+  animation-duration: 7s;
+  animation-delay: -3s;
+}
+
+@keyframes twinkle {
+  from { opacity: 0.35; }
+  to   { opacity: 0.9; }
+}
+
+.stars.far { animation-name: twinkle-far; }
+
+@keyframes twinkle-far {
+  from { opacity: 0.15; }
+  to   { opacity: 0.4; }
+}
+
+/* JESUS loves you: 화면 가운데에 아주 크게, 은은하게 빛나요 */
+.jesus {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  margin: 0;
+  transform: translate(-50%, -50%);
+  width: 100%;
+  font-family: "Cinzel", Georgia, "Times New Roman", serif;
+  font-weight: 900;
+  font-size: clamp(90px, 19vw, 300px);
+  line-height: 0.95;
+  letter-spacing: 0.04em;
+  text-align: center;
+  white-space: nowrap;
+  color: transparent;
+  background: linear-gradient(180deg, rgba(234, 242, 255, 0.16) 0%, rgba(142, 197, 245, 0.08) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  filter: drop-shadow(0 0 30px rgba(142, 197, 245, 0.15));
+}
+
+.jesus span {
+  display: block;
+  font-weight: 700;
+  font-size: 0.42em;
+  letter-spacing: 0.3em;
+  margin-top: 0.15em;
+  padding-left: 0.3em; /* 글자 간격 때문에 생긴 오른쪽 여백 맞추기 */
+}
+
+/* ===== 가운데 유리 카드 ===== */
 .app {
-  max-width: 520px;
-  margin: 56px auto;
-  padding: 32px 28px;
-  background: rgba(255, 255, 255, 0.85);
-  border-radius: 28px;
-  box-shadow: 0 12px 32px rgba(142, 197, 245, 0.35);
+  position: relative;
+  z-index: 1;
+  max-width: 540px;
+  margin: 64px auto;
+  padding: 34px 30px;
+  background: var(--glass);
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow:
+    0 30px 80px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 h1 {
   margin: 0 0 6px;
   font-size: 30px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
   text-align: center;
   color: var(--text);
 }
 
 /* 제목 아래 작은 글씨 */
 .subtitle {
-  margin: 0 0 24px;
-  font-size: 15px;
+  margin: 0 0 26px;
+  font-size: 14px;
+  letter-spacing: 0.12em;
   text-align: center;
-  color: var(--muted);
+  color: var(--sky);
 }
 
 /* 가장 가까운 할 일 알림 */
 .nearest {
   margin: 0 0 18px;
   padding: 12px 16px;
-  background: #fff0f0;
-  border: 2px dashed var(--red);
-  border-radius: 16px;
+  background: rgba(255, 138, 138, 0.08);
+  border: 1px solid rgba(255, 138, 138, 0.35);
+  border-radius: 14px;
   font-weight: 600;
   text-align: center;
+  box-shadow: 0 0 20px rgba(255, 138, 138, 0.12);
 }
 
-/* 입력칸 + 추가 버튼 */
+/* ===== 입력칸 + 추가 버튼 ===== */
 .new-todo {
   display: flex;
   flex-direction: column;
@@ -67,11 +162,11 @@ h1 {
   gap: 10px;
 }
 
-/* 마감일, 시간 고르는 칸 */
+/* 마감일, 시간, 작성자 칸 */
 .new-todo .due {
   flex-wrap: wrap;
-  padding: 0 6px;
-  font-size: 14px;
+  padding: 0 4px;
+  font-size: 13px;
   color: var(--muted);
 }
 
@@ -83,97 +178,109 @@ h1 {
 
 .new-todo .due input {
   padding: 6px 10px;
-  font-size: 14px;
+  font-size: 13px;
   color: var(--text);
-  background: var(--sky-light);
-  border: 2px solid transparent;
-  border-radius: 999px;
+  background: var(--glass);
+  border: 1px solid var(--line);
+  border-radius: 10px;
   outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
-.new-todo .due input:focus { border-color: var(--sky-deep); }
+.new-todo .due input::placeholder { color: var(--muted); }
+
+.new-todo .due input:focus {
+  border-color: var(--sky);
+  box-shadow: 0 0 0 3px rgba(142, 197, 245, 0.15);
+}
 
 .new-todo .row > input {
   flex: 1;
+  min-width: 0;
   padding: 14px 18px;
   font-size: 16px;
   color: var(--text);
-  background: var(--sky-light);
-  border: 2px solid transparent;
-  border-radius: 999px;
+  background: var(--glass);
+  border: 1px solid var(--line);
+  border-radius: 14px;
   outline: none;
-  transition: border-color 0.2s, background 0.2s;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
 }
 
 .new-todo .row > input::placeholder { color: var(--muted); }
 
 .new-todo .row > input:focus {
-  background: #fff;
-  border-color: var(--sky-deep);
+  background: var(--glass-strong);
+  border-color: var(--sky);
+  box-shadow: 0 0 0 3px rgba(142, 197, 245, 0.15), 0 0 24px var(--sky-glow);
 }
 
 .new-todo button {
-  padding: 0 22px;
+  padding: 0 24px;
   border: 0;
-  border-radius: 999px;
-  background: var(--red);
+  border-radius: 14px;
+  background: linear-gradient(135deg, #ff9d9d, #ff6b81);
   color: #fff;
   font-size: 16px;
   font-weight: 700;
+  letter-spacing: 0.04em;
   cursor: pointer;
-  box-shadow: 0 4px 0 var(--red-deep);
-  transition: transform 0.1s, box-shadow 0.1s, background 0.2s;
+  box-shadow: 0 6px 24px var(--red-glow);
+  transition: transform 0.1s, box-shadow 0.2s, filter 0.2s;
 }
 
-.new-todo button:hover { background: var(--red-deep); }
-
-/* 누르면 쏙 들어가는 효과 */
-.new-todo button:active {
-  transform: translateY(3px);
-  box-shadow: 0 1px 0 var(--red-deep);
+.new-todo button:hover {
+  filter: brightness(1.08);
+  box-shadow: 0 8px 32px var(--red-glow);
 }
 
-/* 전체 / 진행 중 / 완료 버튼 줄 */
+.new-todo button:active { transform: scale(0.96); }
+
+/* ===== 전체 / 진행 중 / 완료 버튼 줄 ===== */
 .filter-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 10px;
-  margin-top: 22px;
+  margin-top: 24px;
 }
 
 .filter-bar[hidden] { display: none; }
 
 .filters {
   display: flex;
-  gap: 6px;
+  gap: 4px;
+  padding: 4px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--line);
+  border-radius: 12px;
 }
 
 .filters button {
   padding: 6px 14px;
-  border: 2px solid var(--sky-light);
-  border-radius: 999px;
-  background: #fff;
-  color: var(--text);
+  border: 0;
+  border-radius: 9px;
+  background: none;
+  color: var(--muted);
   font: inherit;
   font-size: 14px;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  transition: background 0.15s, color 0.15s;
 }
 
-.filters button:hover { border-color: var(--sky); }
+.filters button:hover { color: var(--text); }
 
-/* 고른 버튼: 연한 빨간색 */
+/* 고른 버튼: 하늘색 빛 */
 .filters button.selected {
-  background: var(--red);
-  border-color: var(--red);
-  color: #fff;
+  background: rgba(142, 197, 245, 0.18);
+  color: var(--text);
   font-weight: 700;
+  box-shadow: inset 0 0 0 1px rgba(142, 197, 245, 0.4);
 }
 
 .remaining {
-  font-size: 14px;
+  font-size: 13px;
   color: var(--muted);
 }
 
@@ -184,14 +291,14 @@ h1 {
   color: var(--muted);
 }
 
-/* 할 일 목록 */
+/* ===== 할 일 목록 ===== */
 .todo-list {
   list-style: none;
-  margin: 20px 0 0;
+  margin: 16px 0 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 .todo-list:empty { display: none; }
@@ -201,44 +308,48 @@ h1 {
   align-items: center;
   gap: 12px;
   padding: 14px 16px;
-  background: #fff;
-  border: 2px solid var(--sky-light);
-  border-radius: 18px;
-  transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s, background 0.15s;
 }
 
-/* 마우스를 올리면 살짝 떠오르는 효과 */
+/* 마우스를 올리면 살짝 떠오르며 빛나요 */
 .todo-list li:hover {
   transform: translateY(-2px);
-  border-color: var(--sky);
-  box-shadow: 0 6px 14px rgba(142, 197, 245, 0.3);
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(142, 197, 245, 0.4);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35), 0 0 18px rgba(142, 197, 245, 0.12);
 }
 
 /* 동그란 체크박스 */
 .todo-list input[type="checkbox"] {
   appearance: none;
   flex-shrink: 0;
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
   margin: 0;
-  border: 2px solid var(--sky-deep);
+  border: 2px solid var(--sky);
   border-radius: 50%;
-  background: #fff;
+  background: transparent;
   cursor: pointer;
   display: grid;
   place-content: center;
-  transition: background 0.15s, border-color 0.15s;
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
 }
+
+.todo-list input[type="checkbox"]:hover { box-shadow: 0 0 10px var(--sky-glow); }
 
 .todo-list input[type="checkbox"]:checked {
   background: var(--red);
   border-color: var(--red);
+  box-shadow: 0 0 12px var(--red-glow);
 }
 
 .todo-list input[type="checkbox"]:checked::after {
   content: "✓";
   color: #fff;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
 }
 
@@ -254,9 +365,8 @@ h1 {
 .todo-list .title {
   font-size: 16px;
   word-break: break-word;
+  cursor: text;
 }
-
-.todo-list .title { cursor: text; }
 
 /* 고치는 중인 입력칸 */
 .todo-list .edit {
@@ -265,10 +375,11 @@ h1 {
   font: inherit;
   font-size: 16px;
   color: var(--text);
-  background: var(--sky-light);
-  border: 2px solid var(--sky-deep);
-  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--sky);
+  border-radius: 8px;
   outline: none;
+  box-shadow: 0 0 14px var(--sky-glow);
 }
 
 /* 작성자 이름: 할 일 아래 작은 글씨 */
@@ -278,9 +389,7 @@ h1 {
 }
 
 /* 완료된 항목: 흐리게 + 줄 긋기 */
-.todo-list li.done {
-  background: #fafcff;
-}
+.todo-list li.done { opacity: 0.6; }
 
 .todo-list li.done .title {
   color: var(--muted);
@@ -293,73 +402,20 @@ h1 {
 .todo-list .badge {
   flex-shrink: 0;
   padding: 4px 10px;
-  background: var(--sky-light);
-  color: var(--text);
-  border-radius: 999px;
-  font-size: 13px;
-  font-weight: 600;
+  background: rgba(142, 197, 245, 0.12);
+  border: 1px solid rgba(142, 197, 245, 0.3);
+  color: var(--sky);
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
 }
 
 /* 마감이 지난 할 일 */
 .todo-list .badge.late {
-  background: #ffe5e5;
-  color: #d9534f;
-}
-
-.todo-list li.done .badge { opacity: 0.5; }
-
-/* 할 일이 없을 때 보이는 문구 */
-.empty {
-  margin: 28px 0 8px;
-  font-size: 18px;
-  text-align: center;
-  color: var(--muted);
-}
-
-.empty::before {
-  content: "“";
-  display: block;
-  font-size: 40px;
-  line-height: 1;
+  background: rgba(255, 138, 138, 0.12);
+  border-color: rgba(255, 138, 138, 0.4);
   color: var(--red);
-}
-
-/* ⚾ 이스터에그: 화면 전체를 덮는 판 (클릭은 통과) */
-.party {
-  position: fixed;
-  inset: 0;
-  overflow: hidden;
-  pointer-events: none;
-  z-index: 1000;
-}
-
-/* 폭죽 불꽃 */
-.party .spark {
-  position: absolute;
-  width: 8px;
-  height: 8px;
-  margin: -4px 0 0 -4px;
-  border-radius: 50%;
-  box-shadow: 0 0 6px rgba(255, 255, 255, 0.9);
-}
-
-/* 날아다니는 야구공, 배트 */
-.party .flyer {
-  position: absolute;
-  top: 0;
-  left: 0;
-  line-height: 1;
-}
-
-/* 카드 아래 작은 문구 */
-.footer-quote {
-  margin: -36px auto 40px;
-  padding: 0 16px;
-  max-width: 520px;
-  font-size: 14px;
-  text-align: center;
-  color: var(--text);
-  opacity: 0.7;
 }
 
 /* 삭제 버튼 */
@@ -368,15 +424,128 @@ h1 {
   width: 30px;
   height: 30px;
   border: 0;
-  border-radius: 50%;
+  border-radius: 8px;
   background: none;
   color: var(--muted);
-  font-size: 15px;
+  font-size: 14px;
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
 }
 
 .todo-list .delete:hover {
-  background: #ffe5e5;
-  color: var(--red-deep);
+  background: rgba(255, 138, 138, 0.15);
+  color: var(--red);
+}
+
+/* 할 일이 없을 때 보이는 문구 */
+.empty {
+  margin: 30px 0 8px;
+  font-size: 17px;
+  font-style: italic;
+  text-align: center;
+  color: var(--muted);
+}
+
+.empty::before {
+  content: "“";
+  display: block;
+  font-family: Georgia, serif;
+  font-size: 48px;
+  line-height: 0.8;
+  color: var(--sky);
+  text-shadow: 0 0 16px var(--sky-glow);
+}
+
+/* 카드 아래 작은 문구 */
+.footer-quote {
+  position: relative;
+  z-index: 1;
+  margin: -40px auto 48px;
+  padding: 0 16px;
+  max-width: 540px;
+  font-size: 13px;
+  text-align: center;
+  color: var(--muted);
+}
+
+/* 좁은 화면 (휴대폰) */
+@media (max-width: 560px) {
+  .app {
+    margin: 24px 16px 56px;
+    padding: 26px 18px;
+  }
+}
+
+/* ===== ⚾ 이스터에그 ===== */
+
+/* 화면 전체를 덮는 판 (클릭은 통과) */
+.party {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* 폭죽을 그리는 캔버스 */
+.party canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* 번쩍이는 하얀 빛 */
+.party .flash {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 55%, #fff 0%, rgba(255, 255, 255, 0.6) 30%, transparent 75%);
+  opacity: 0;
+}
+
+/* 화면 가운데 큰 글씨: HOME RUN! */
+.party .homerun {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  margin: 0;
+  font-family: "Cinzel", Georgia, serif;
+  font-weight: 900;
+  font-size: clamp(56px, 13vw, 200px);
+  line-height: 1;
+  white-space: nowrap;
+  color: #fff;
+  -webkit-text-stroke: 2px rgba(255, 138, 138, 0.9);
+  text-shadow:
+    0 0 20px #fff,
+    0 0 50px var(--red),
+    0 0 90px var(--sky),
+    0 10px 0 rgba(0, 0, 0, 0.35);
+  opacity: 0;
+}
+
+/* 날아다니는 야구공, 배트 */
+.party .flyer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  line-height: 1;
+  filter: drop-shadow(0 0 12px rgba(255, 255, 255, 0.6));
+  will-change: transform;
+}
+
+/* 화면에 꽉 차게 지나가는 거대한 야구공 */
+.party .giant {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  line-height: 1;
+  font-size: min(70vw, 70vh);
+  filter: drop-shadow(0 0 60px rgba(255, 255, 255, 0.5));
+  will-change: transform;
+}
+
+/* 움직임을 줄이는 설정을 켠 사람에게는 흔들림 없이 */
+@media (prefers-reduced-motion: reduce) {
+  .stars { animation: none; }
 }
