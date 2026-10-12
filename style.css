@@ -324,6 +324,33 @@ h1 {
   color: var(--red);
 }
 
+/* ⚾ 이스터에그: 화면 전체를 덮는 판 (클릭은 통과) */
+.party {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 1000;
+}
+
+/* 폭죽 불꽃 */
+.party .spark {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  margin: -4px 0 0 -4px;
+  border-radius: 50%;
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.9);
+}
+
+/* 날아다니는 야구공, 배트 */
+.party .flyer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  line-height: 1;
+}
+
 /* 카드 아래 작은 문구 */
 .footer-quote {
   margin: -36px auto 40px;

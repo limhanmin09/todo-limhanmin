@@ -225,6 +225,89 @@ form.addEventListener("submit", (event) => {
   timeInput.value = "";
   input.focus();
   render();
+
+  // 이스터에그: 할 일에 "야구"가 들어가면 폭죽 + 야구공과 배트
+  if (text.includes("야구")) baseballParty();
 });
+
+// ⚾ 이스터에그: 약 6초 동안 폭죽이 터지고 야구공과 배트가 날아다녀요
+function baseballParty() {
+  const DURATION = 6000; // 전체 길이 (밀리초)
+  const colors = ["#ffadad", "#8ec5f5", "#ffd166", "#b8f2c9", "#ff8a8a", "#ffffff"];
+
+  // 화면 전체를 덮는 투명한 판 (클릭은 그대로 통과해요)
+  const stage = document.createElement("div");
+  stage.className = "party";
+  document.body.append(stage);
+
+  const random = (min, max) => min + Math.random() * (max - min);
+
+  // 폭죽 하나: 한 점에서 작은 불꽃들이 사방으로 퍼져요
+  function firework() {
+    const x = random(10, 90); // 화면 가로 위치 (%)
+    const y = random(10, 60); // 화면 세로 위치 (%)
+    const color = colors[Math.floor(Math.random() * colors.length)];
+
+    for (let i = 0; i < 24; i++) {
+      const spark = document.createElement("span");
+      spark.className = "spark";
+      spark.style.left = `${x}vw`;
+      spark.style.top = `${y}vh`;
+      spark.style.background = color;
+      stage.append(spark);
+
+      const angle = (Math.PI * 2 * i) / 24;
+      const distance = random(60, 140);
+      spark.animate(
+        [
+          { transform: "translate(0, 0) scale(1)", opacity: 1 },
+          {
+            transform: `translate(${Math.cos(angle) * distance}px, ${Math.sin(angle) * distance + 40}px) scale(0.3)`,
+            opacity: 0,
+          },
+        ],
+        { duration: random(900, 1300), easing: "cubic-bezier(0.2, 0.7, 0.4, 1)" }
+      ).onfinish = () => spark.remove();
+    }
+  }
+
+  // 야구공이나 배트 하나: 화면 한쪽에서 반대쪽으로 빙글빙글 날아가요
+  function flyer() {
+    const item = document.createElement("span");
+    item.className = "flyer";
+    item.textContent = Math.random() < 0.6 ? "⚾" : "🏏";
+    item.style.fontSize = `${random(28, 56)}px`;
+    stage.append(item);
+
+    const fromLeft = Math.random() < 0.5;
+    const startX = fromLeft ? -10 : 110;
+    const endX = fromLeft ? 110 : -10;
+    const startY = random(20, 100);
+    const endY = random(-10, 60);
+    const spin = random(360, 1080) * (fromLeft ? 1 : -1);
+
+    item.animate(
+      [
+        { transform: `translate(${startX}vw, ${startY}vh) rotate(0deg)` },
+        { transform: `translate(${(startX + endX) / 2}vw, ${Math.min(startY, endY) - 25}vh) rotate(${spin / 2}deg)` },
+        { transform: `translate(${endX}vw, ${endY}vh) rotate(${spin}deg)` },
+      ],
+      { duration: random(1400, 2400), easing: "ease-in-out" }
+    ).onfinish = () => item.remove();
+  }
+
+  // 끝나기 1.5초 전까지 계속 새로 터뜨리고 날려요
+  const fireworkTimer = setInterval(firework, 350);
+  const flyerTimer = setInterval(flyer, 120);
+  firework();
+
+  setTimeout(() => {
+    clearInterval(fireworkTimer);
+    clearInterval(flyerTimer);
+  }, DURATION - 1500);
+
+  // 다 끝나면 판을 치워요
+  setTimeout(() => stage.remove(), DURATION);
+}
 
 render();
