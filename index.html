@@ -29,7 +29,20 @@
     <!-- 할 일이 하나도 없을 때 보이는 문구 -->
     <p id="empty" class="empty"></p>
 
+    <!-- 전체 / 진행 중 / 완료 버튼 + 남은 개수 (할 일이 있을 때만 보여요) -->
+    <div id="filter-bar" class="filter-bar" hidden>
+      <div class="filters">
+        <button type="button" data-filter="all" class="selected">전체</button>
+        <button type="button" data-filter="active">진행 중</button>
+        <button type="button" data-filter="done">완료</button>
+      </div>
+      <span id="remaining" class="remaining"></span>
+    </div>
+
     <ul id="todo-list" class="todo-list"></ul>
+
+    <!-- 고른 버튼에 해당하는 할 일이 없을 때 안내 -->
+    <p id="filter-empty" class="filter-empty" hidden></p>
   </main>
 
   <!-- 카드 아래에 항상 보이는 작은 문구 -->

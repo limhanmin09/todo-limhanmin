@@ -11,6 +11,13 @@ const list = document.getElementById("todo-list");
 const nearest = document.getElementById("nearest");
 const empty = document.getElementById("empty");
 const footerQuote = document.getElementById("footer-quote");
+const filterBar = document.getElementById("filter-bar");
+const filterButtons = document.querySelectorAll("#filter-bar [data-filter]");
+const remaining = document.getElementById("remaining");
+const filterEmpty = document.getElementById("filter-empty");
+
+// 지금 고른 버튼: "all"(전체), "active"(진행 중), "done"(완료)
+let filter = "all";
 
 // 빈 공간에 넣을 재치 있는 문구 (새로고침할 때마다 무작위로 골라요)
 const quotes = [
@@ -100,7 +107,14 @@ function render() {
     (a, b) => a.done - b.done || dueTime(a) - dueTime(b)
   );
 
-  sorted.forEach((todo) => {
+  // 고른 버튼에 맞는 할 일만 보여주기
+  const shown = sorted.filter((t) => {
+    if (filter === "active") return !t.done;
+    if (filter === "done") return t.done;
+    return true; // 전체
+  });
+
+  shown.forEach((todo) => {
     const li = document.createElement("li");
     if (todo.done) li.classList.add("done");
 
@@ -165,9 +179,31 @@ function render() {
     nearest.hidden = true;
   }
 
-  // 할 일이 하나도 없으면 문구 보이기
+  // 할 일이 하나도 없으면 문구 보이기 (이때는 버튼 줄도 숨겨요)
   empty.hidden = todos.length > 0;
+  filterBar.hidden = todos.length === 0;
+
+  // 남은 할 일 개수 (완료 안 한 일)
+  remaining.textContent = `남은 일 ${todos.filter((t) => !t.done).length}개`;
+
+  // 할 일은 있는데 고른 버튼에 해당하는 게 없을 때 안내 문구
+  if (todos.length > 0 && shown.length === 0) {
+    filterEmpty.textContent =
+      filter === "done" ? "완료한 할 일이 아직 없어요" : "남은 할 일이 없어요! 대단해요 🎉";
+    filterEmpty.hidden = false;
+  } else {
+    filterEmpty.hidden = true;
+  }
 }
+
+// 전체 / 진행 중 / 완료 버튼
+filterButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    filter = button.dataset.filter;
+    filterButtons.forEach((b) => b.classList.toggle("selected", b === button));
+    render();
+  });
+});
 
 // 추가 버튼을 누르거나 Enter를 치면 실행
 form.addEventListener("submit", (event) => {

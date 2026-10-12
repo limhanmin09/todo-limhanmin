@@ -133,6 +133,57 @@ h1 {
   box-shadow: 0 1px 0 var(--red-deep);
 }
 
+/* 전체 / 진행 중 / 완료 버튼 줄 */
+.filter-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.filter-bar[hidden] { display: none; }
+
+.filters {
+  display: flex;
+  gap: 6px;
+}
+
+.filters button {
+  padding: 6px 14px;
+  border: 2px solid var(--sky-light);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.filters button:hover { border-color: var(--sky); }
+
+/* 고른 버튼: 연한 빨간색 */
+.filters button.selected {
+  background: var(--red);
+  border-color: var(--red);
+  color: #fff;
+  font-weight: 700;
+}
+
+.remaining {
+  font-size: 14px;
+  color: var(--muted);
+}
+
+/* 고른 버튼에 해당하는 할 일이 없을 때 */
+.filter-empty {
+  margin: 20px 0 4px;
+  text-align: center;
+  color: var(--muted);
+}
+
 /* 할 일 목록 */
 .todo-list {
   list-style: none;
