@@ -36,13 +36,56 @@
     <p class="jesus">JESUS<span>loves you</span></p>
     <!-- 계절·날씨 효과 (벚꽃잎, 낙엽, 눈, 비, 반딧불) -->
     <canvas id="weather" class="weather"></canvas>
+    <!-- 계절에 따라 모습이 바뀌는 픽셀 나무들 (app.js가 그려요) -->
+    <div id="trees" class="trees"></div>
     <div class="ground"></div>
     <!-- 땅에 있는 픽셀 연못 (인택 이스터에그에서 낚시하는 곳) -->
-    <div id="pond" class="pond"><i></i><i></i><i></i></div>
+    <div class="pond-area">
+      <span class="reed r1"></span>
+      <span class="reed r2"></span>
+      <div id="pond" class="pond">
+        <i></i><i></i><i></i>
+        <span class="lily y1"></span>
+        <span class="lily y2 flower"></span>
+        <span class="lily y3"></span>
+      </div>
+      <span class="rock k1"></span>
+      <span class="rock k2"></span>
+      <span class="rock k3"></span>
+      <span class="reed r3"></span>
+    </div>
   </div>
 
   <!-- 땅 위를 지나가는 픽셀 친구들 (건드리면 깜짝 놀라요) -->
   <div id="critters" class="critters" aria-hidden="true"></div>
+
+  <!-- 🐱 내 고양이: 캣타워 + 상태 게이지 + 쓰다듬기/밥/물 버튼 -->
+  <section id="cat-zone" class="cat-zone" aria-label="고양이 키우기">
+    <div class="cat-panel">
+      <p class="cat-name">🐱 냥이</p>
+      <div class="gauge"><span>배부름</span><b><i id="g-full"></i></b></div>
+      <div class="gauge"><span>목마름</span><b><i id="g-water"></i></b></div>
+      <div class="gauge"><span>기분</span><b><i id="g-mood"></i></b></div>
+      <div class="cat-actions">
+        <button type="button" id="btn-pet">쓰다듬기</button>
+        <button type="button" id="btn-feed">밥주기</button>
+        <button type="button" id="btn-water">물주기</button>
+      </div>
+    </div>
+    <div class="tower">
+      <div class="ct-post p1"></div>
+      <div class="ct-post p2"></div>
+      <div class="ct-house"><span class="ct-hole"></span></div>
+      <div class="ct-plat ct-roof"></div>
+      <div class="ct-plat ct-top"></div>
+      <div class="ct-toy"></div>
+      <div class="ct-plat ct-base"></div>
+      <div class="bowl food" id="bowl-food"><i></i></div>
+      <div class="bowl water" id="bowl-water"><i></i></div>
+      <canvas id="cat" class="cat" title="쓰다듬어 줘!"></canvas>
+      <p id="cat-bubble" class="cat-bubble" hidden></p>
+    </div>
+  </section>
 
   <main class="app">
     <h1>할 일 목록</h1>

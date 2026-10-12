@@ -379,6 +379,9 @@ form.addEventListener("submit", (event) => {
   // 이스터에그: 할 일에 "인택"이 들어가면 낚시꾼이 나와서 연못에 낚싯대를 던져요
   if (text.includes("인택")) fishingParty();
 
+  // 이스터에그: 할 일에 "삭준"이 들어가면 나무가 쑥 커지고 미친 돼지가 질주해요
+  if (text.includes("삭준")) sakjunParty();
+
   // 이스터에그: 할 일에 "진수"가 들어가면 오른쪽 위에 코 버튼이 생겨요
   if (text.includes("진수") && noseButton.hidden) {
     noseButton.hidden = false;
@@ -688,6 +691,7 @@ function spawnCritter() {
   };
   el.addEventListener("pointerenter", startle);
   el.addEventListener("pointerdown", startle);
+  critter.startle = startle; // 돼지가 지나갈 때도 놀라게 하려고 꺼내 둬요
 }
 
 let lastTime = performance.now();
@@ -1159,7 +1163,7 @@ function fishingParty() {
   const start = performance.now();
 
   function frame(now) {
-    const t = now - start;
+    const t = Math.max(0, now - start); // 첫 프레임 시각이 시작보다 살짝 이를 수 있어서 0 아래로 안 내려가게
     const L = layout();
     ctx.clearRect(0, 0, W, H);
     // 마지막 0.9초는 스르르 사라져요
@@ -1276,6 +1280,413 @@ function fishingParty() {
       window.removeEventListener("resize", resize);
       stage.remove();
       fishingNow = false;
+    }
+  }
+  requestAnimationFrame(frame);
+}
+
+// ===== 🌳 계절 따라 바뀌는 픽셀 나무 =====
+// L=잎, D=진한 잎, T=줄기, t=줄기 그늘
+const treeArt = [
+  ".....LLLLLL.....",
+  "...LLLLLLLLLL...",
+  "..LLLDLLLLLLLL..",
+  ".LLLLLLLLLDLLLL.",
+  ".LLDLLLLLLLLLLL.",
+  "LLLLLLLLLLLLDLLL",
+  "LLLLLLDLLLLLLLLL",
+  "LLDLLLLLLLLLLLLL",
+  "LLLLLLLLLLDLLLLL",
+  ".LLLLLDLLLLLLLL.",
+  ".LLLLLLLLLLLDLL.",
+  "..DLLLLLLLLLLD..",
+  "...DDLLTTLLDD...",
+  ".....DDTTDD.....",
+  "......TTTT......",
+  "......TTtT......",
+  "......TTtT......",
+  "......TTtT......",
+  "......TTtT......",
+  ".....TTTtTT.....",
+  "....TTT..TTT....",
+];
+const treeLeaves = {
+  spring: { L: "#ffc2d1", D: "#ff8fab" }, // 벚꽃
+  summer: { L: "#6ab04c", D: "#3e8e41" }, // 초록 잎
+  autumn: { L: "#f4a261", D: "#e76f51" }, // 단풍
+  winter: { L: "#f4f8ff", D: "#b9c7dd" }, // 눈 쌓인 나무
+};
+// 나무 자리(화면 가로 %)와 크기(픽셀 한 칸 크기)
+const treeSpots = [
+  { left: 0.5, scale: 8 },
+  { left: 22, scale: 10 },
+  { left: 71, scale: 7 },
+  { left: 88, scale: 9 },
+];
+const treesEl = document.getElementById("trees");
+let treeSeason = "";
+
+function drawTrees() {
+  const season = root.dataset.season;
+  if (season === treeSeason) return; // 계절이 바뀔 때만 다시 그려요
+  treeSeason = season;
+  const sprite = makeSprite(treeArt, { ...treeLeaves[season], T: "#8b5a2b", t: "#6b4423" }, "#2b2d42");
+  treesEl.innerHTML = "";
+  for (const spot of treeSpots) {
+    const tree = document.createElement("canvas");
+    tree.className = "tree";
+    tree.width = sprite.width;
+    tree.height = sprite.height;
+    tree.getContext("2d").drawImage(sprite, 0, 0);
+    tree.style.left = `${spot.left}%`;
+    tree.style.width = `${sprite.width * spot.scale}px`;
+    treesEl.append(tree);
+  }
+}
+drawTrees();
+setInterval(drawTrees, 60 * 1000);
+
+// ===== 🐟 연못에서 가끔 물고기가 퐁! 뛰어올라요 =====
+const pondFishSprite = makeSprite(
+  [".FFF..F.", "FFFFF.FF", "FKFFFFF.", "FFFFF.FF", ".FFF..F."],
+  { F: "#f4a259", K: "#2b2d42" },
+  "#2b2d42"
+);
+setInterval(() => {
+  if (root.dataset.season === "winter" || Math.random() < 0.4) return; // 겨울엔 얼어서 안 뛰어요
+  const pond = document.getElementById("pond");
+  const fish = document.createElement("canvas");
+  fish.className = "pond-fish";
+  fish.width = pondFishSprite.width;
+  fish.height = pondFishSprite.height;
+  fish.getContext("2d").drawImage(pondFishSprite, 0, 0);
+  const startX = 30 + Math.random() * 150;
+  fish.style.left = `${startX}px`;
+  fish.style.top = "20px";
+  pond.parentElement.append(fish);
+  fish.animate(
+    [
+      { transform: "translate(0, 0) rotate(-40deg)" },
+      { transform: "translate(24px, -50px) rotate(0deg)" },
+      { transform: "translate(48px, 0) rotate(40deg)" },
+    ],
+    { duration: 900, easing: "steps(9)" }
+  ).onfinish = () => fish.remove();
+}, 5000);
+
+// ===== 🐱 내 고양이 "냥이" =====
+// 배부름·목마름·기분은 0~100. 시간이 지나면 조금씩 줄어요 (새로고침하면 처음으로).
+const cat = {
+  full: 70,
+  water: 70,
+  mood: 70,
+  busy: false, // 밥이나 물을 먹는 중
+  happyUntil: 0,
+};
+const catCanvas = document.getElementById("cat");
+const catBubble = document.getElementById("cat-bubble");
+const towerEl = document.querySelector(".tower");
+const bowlFood = document.getElementById("bowl-food");
+const bowlWater = document.getElementById("bowl-water");
+
+// 앉아 있는 치즈 고양이 (앞모습): C=털, S=줄무늬, W=흰 털, K=눈, P=코
+const catBase = [
+  ".C..........C.",
+  ".CC........CC.",
+  ".CCC......CCC.",
+  ".CCCCCCCCCCCC.",
+  "CCSCCCCCCCCSCC",
+  "CCKKCCCCCCKKCC",
+  "CCKKCCCCCCKKCC",
+  "CCCCCWPPWCCCCC",
+  ".CCCCWWWWCCCC.",
+  "..CCCCCCCCCC..",
+  ".CCCCWWWWCCCC.",
+  ".CCCWWWWWWCCC.",
+  ".CCCWWWWWWCCCC",
+  ".CC.WW..WW.CCC",
+];
+const catColors = { C: "#f4a259", S: "#d9822b", W: "#fff3e0", K: "#2b2d42", P: "#ff8fab" };
+const withEyes = (row5, row6) => catBase.map((r, i) => (i === 5 ? row5 : i === 6 ? row6 : r));
+const catFaces = {
+  idle: makeSprite(catBase, catColors, "#7a3e12"),
+  blink: makeSprite(withEyes("CCCCCCCCCCCCCC", "CCKKCCCCCCKKCC"), catColors, "#7a3e12"),
+  happy: makeSprite(withEyes("CCCKCCCCCCKCCC", "CCKCKCCCCKCKCC"), catColors, "#7a3e12"), // ^ ^
+};
+catCanvas.width = catFaces.idle.width;
+catCanvas.height = catFaces.idle.height;
+
+function drawCat(face) {
+  const g = catCanvas.getContext("2d");
+  g.clearRect(0, 0, catCanvas.width, catCanvas.height);
+  g.drawImage(catFaces[face], 0, 0);
+}
+drawCat("idle");
+
+// 가끔 눈을 깜빡여요 (기분 좋을 때는 ^ ^)
+setInterval(() => {
+  if (Date.now() < cat.happyUntil) return;
+  drawCat("blink");
+  setTimeout(() => drawCat(Date.now() < cat.happyUntil ? "happy" : "idle"), 180);
+}, 3500);
+
+function updateGauges() {
+  document.getElementById("g-full").style.width = `${cat.full}%`;
+  document.getElementById("g-water").style.width = `${cat.water}%`;
+  document.getElementById("g-mood").style.width = `${cat.mood}%`;
+}
+updateGauges();
+
+const clamp = (v) => Math.max(0, Math.min(100, v));
+
+// 고양이 머리 위에 말풍선을 잠깐 띄워요
+let bubbleTimer;
+function catSay(text, ms = 1600) {
+  catBubble.textContent = text;
+  catBubble.style.left = `${catCanvas.offsetLeft + catCanvas.offsetWidth / 2}px`;
+  catBubble.style.bottom = `${parseFloat(getComputedStyle(catCanvas).bottom) + catCanvas.offsetHeight + 8}px`;
+  catBubble.hidden = false;
+  clearTimeout(bubbleTimer);
+  bubbleTimer = setTimeout(() => (catBubble.hidden = true), ms);
+}
+
+function beHappy(ms) {
+  cat.happyUntil = Date.now() + ms;
+  drawCat("happy");
+  setTimeout(() => {
+    if (Date.now() >= cat.happyUntil) drawCat("idle");
+  }, ms + 20);
+}
+
+// 쓰다듬기: 하트가 뿅뿅, 골골골~
+let lastPet = 0;
+function petCat() {
+  if (Date.now() - lastPet < 500) return;
+  lastPet = Date.now();
+  cat.mood = clamp(cat.mood + 15);
+  updateGauges();
+  beHappy(2000);
+  catSay(pick(["골골골~", "그르릉~", "냐아~♥", "더 해줘옹"]));
+  // 고양이가 살짝 들썩
+  catCanvas.animate(
+    [{ transform: "translateY(0)" }, { transform: "translateY(-6px)" }, { transform: "translateY(0)" }],
+    { duration: 300, easing: "steps(3)" }
+  );
+  for (let i = 0; i < 4; i++) {
+    const heart = document.createElement("span");
+    heart.className = "heart";
+    heart.textContent = "♥";
+    heart.style.left = `${catCanvas.offsetLeft + 20 + Math.random() * 40}px`;
+    heart.style.bottom = `${parseFloat(getComputedStyle(catCanvas).bottom) + 60}px`;
+    towerEl.append(heart);
+    heart.animate(
+      [
+        { transform: "translate(0, 0)", opacity: 1 },
+        { transform: `translate(${(Math.random() - 0.5) * 40}px, -70px)`, opacity: 0 },
+      ],
+      { duration: 900 + i * 150, easing: "steps(8)" }
+    ).onfinish = () => heart.remove();
+  }
+}
+
+function pick(list) {
+  return list[Math.floor(Math.random() * list.length)];
+}
+
+// 고양이가 폴짝 뛰어서 다른 자리로 가요 (left, bottom은 캣타워 안의 px)
+const SPOTS = {
+  top: { left: 24, bottom: 330 },
+  food: { left: 84, bottom: 26 },
+  water: { left: 208, bottom: 26 },
+};
+// 포물선을 그리며 10번에 나눠 뚝뚝 움직여요 (게임처럼)
+function jumpTo(spot) {
+  const from = { left: catCanvas.offsetLeft, bottom: parseFloat(getComputedStyle(catCanvas).bottom) };
+  const to = SPOTS[spot];
+  const peak = Math.max(from.bottom, to.bottom) + 50;
+  const DURATION = 650;
+  const start = performance.now();
+  return new Promise((resolve) => {
+    function step(now) {
+      const p = Math.min(1, Math.floor(((now - start) / DURATION) * 10) / 10);
+      const left = from.left + (to.left - from.left) * p;
+      // 처음 높이 → 꼭대기 → 도착 높이를 잇는 포물선
+      const bottom = (1 - p) * (1 - p) * from.bottom + 2 * (1 - p) * p * (2 * peak - (from.bottom + to.bottom) / 2) + p * p * to.bottom;
+      catCanvas.style.left = `${left}px`;
+      catCanvas.style.bottom = `${bottom}px`;
+      if (p < 1) requestAnimationFrame(step);
+      else resolve();
+    }
+    requestAnimationFrame(step);
+  });
+}
+
+// 밥주기/물주기: 그릇을 채우면 고양이가 내려와서 먹고 다시 올라가요
+async function serve(kind) {
+  if (cat.busy) return;
+  const isFood = kind === "food";
+  if ((isFood ? cat.full : cat.water) >= 95) {
+    catSay(isFood ? "배불러옹~" : "목 안 말라옹~");
+    return;
+  }
+  cat.busy = true;
+  const bowl = isFood ? bowlFood : bowlWater;
+  bowl.classList.add("full");
+  catSay(isFood ? "밥이다옹!" : "물이다옹!", 900);
+  await new Promise((r) => setTimeout(r, 500));
+  await jumpTo(kind);
+  catSay(isFood ? "냠냠냠…" : "할짝할짝…", 2000);
+  beHappy(2600);
+  await new Promise((r) => setTimeout(r, 2000));
+  bowl.classList.remove("full");
+  if (isFood) cat.full = clamp(cat.full + 35);
+  else cat.water = clamp(cat.water + 35);
+  cat.mood = clamp(cat.mood + 5);
+  updateGauges();
+  await jumpTo("top");
+  catSay("잘 먹었다옹♥");
+  cat.busy = false;
+}
+
+catCanvas.addEventListener("click", petCat);
+document.getElementById("btn-pet").addEventListener("click", petCat);
+document.getElementById("btn-feed").addEventListener("click", () => serve("food"));
+document.getElementById("btn-water").addEventListener("click", () => serve("water"));
+
+// 20초마다 배고픔·목마름·기분이 조금씩 줄고, 부족하면 졸라요
+setInterval(() => {
+  cat.full = clamp(cat.full - 3);
+  cat.water = clamp(cat.water - 4);
+  cat.mood = clamp(cat.mood - 2);
+  updateGauges();
+  if (cat.busy) return;
+  if (cat.full < 30) catSay("배고파옹…", 2500);
+  else if (cat.water < 30) catSay("목말라옹…", 2500);
+  else if (cat.mood < 30) catSay("심심하다옹…", 2500);
+}, 20000);
+
+// ===== 🐷 "삭준" 이스터에그 =====
+// 나무들이 1초 동안 엄청 커졌다가 돌아오고, 화난 돼지가 오른쪽에서 왼쪽으로 한 번 질주해요
+let sakjunNow = false;
+
+const pigColors = { P: "#ff8fa3", D: "#e5537a", K: "#2b2d42", R: "#c1121f" };
+const pigBody = [
+  "...DD...........",
+  "..DPRRPPPPPPPP..",
+  ".PPRKPPPPPPPPPP.",
+  "DDPPPPPPPPPPPPPP",
+  "DDPPPPPPPPPPPPPD",
+  "DDPPPPPPPPPPPPP.",
+  ".PPPPPPPPPPPPPP.",
+  "..PPPPPPPPPPPP..",
+];
+const pigFrames = [
+  makeSprite([...pigBody, "..PP.PP...PP.PP.", "..PP.PP...PP.PP.", "..KK.KK...KK.KK."], pigColors, "#7a1f35"),
+  makeSprite([...pigBody, "...PP.PP..PP.PP.", ".PP...PP.PP...PP", ".KK...KK.KK...KK"], pigColors, "#7a1f35"),
+];
+
+function sakjunParty() {
+  if (sakjunNow) return;
+  sakjunNow = true;
+
+  // 1) 나무가 1초 동안 쑥쑥 커졌다가 돌아와요
+  for (const tree of document.querySelectorAll(".tree")) {
+    tree.animate(
+      [
+        { transform: "scale(1)" },
+        { transform: "scale(3.2)", offset: 0.4 },
+        { transform: "scale(2.8)", offset: 0.6 },
+        { transform: "scale(1)" },
+      ],
+      { duration: 1000, easing: "steps(12)" }
+    );
+  }
+
+  // 2) 1초 뒤 돼지 질주 (약 1.8초)
+  setTimeout(runPig, 1000);
+}
+
+function runPig() {
+  const stage = document.createElement("div");
+  stage.className = "party";
+  const canvas = document.createElement("canvas");
+  stage.append(canvas);
+  document.body.append(stage);
+  const ctx = canvas.getContext("2d");
+  const W = (canvas.width = window.innerWidth);
+  const H = (canvas.height = window.innerHeight);
+  ctx.imageSmoothingEnabled = false;
+
+  const SCALE = 9;
+  const pw = pigFrames[0].width * SCALE;
+  const ph = pigFrames[0].height * SCALE;
+  const groundTop = H - 56;
+  const RUN = 1800;
+  const dust = [];
+  const steam = [];
+  const start = performance.now();
+  shakeScreen(RUN, 10);
+
+  function frame(now) {
+    const t = Math.max(0, now - start); // 첫 프레임 시각이 시작보다 살짝 이를 수 있어서 0 아래로 안 내려가게
+    const p = t / RUN;
+    const x = W + 40 - (W + pw + 80) * p; // 오른쪽 → 왼쪽
+    const hop = (Math.floor(t / 70) % 2) * 6; // 쿵쾅쿵쾅
+    const y = groundTop - ph - hop;
+    ctx.clearRect(0, 0, W, H);
+
+    // 뒤로 날리는 흙먼지
+    if (Math.random() < 0.9) {
+      dust.push({ x: x + pw - 10, y: groundTop - 10, vx: 3 + Math.random() * 5, vy: -Math.random() * 4, life: 1 });
+    }
+    // 머리에서 뿜어 나오는 화난 김
+    if (Math.random() < 0.5) {
+      steam.push({ x: x + 30, y: y - 10, vx: -1 + Math.random() * 2, vy: -2 - Math.random() * 2, life: 1 });
+    }
+    for (const list of [dust, steam]) {
+      for (let i = list.length - 1; i >= 0; i--) {
+        const d = list[i];
+        d.x += d.vx;
+        d.y += d.vy;
+        d.vy += list === dust ? 0.2 : -0.02;
+        d.life -= 0.03;
+        if (d.life <= 0) { list.splice(i, 1); continue; }
+        ctx.globalAlpha = d.life;
+        ctx.fillStyle = list === dust ? "#b08968" : "#ffffff";
+        const s = list === dust ? 8 : 10;
+        ctx.fillRect(Math.round(d.x / 4) * 4, Math.round(d.y / 4) * 4, s, s);
+      }
+    }
+    ctx.globalAlpha = 1;
+
+    // 돼지 (다리 2장을 빠르게 번갈아)
+    ctx.drawImage(pigFrames[Math.floor(t / 60) % 2], Math.round(x), Math.round(y), pw, ph);
+
+    // 화난 말풍선
+    ctx.font = '700 26px Galmuri11, "Press Start 2P", monospace';
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    const text = "꾸에에엑!!!";
+    const tw = ctx.measureText(text).width + 24;
+    const bx = Math.round(x + pw / 2 - tw / 2);
+    const by = Math.round(y - 70);
+    ctx.fillStyle = "#2b2d42";
+    ctx.fillRect(bx - 4, by - 4, tw + 8, 52);
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(bx, by, tw, 44);
+    ctx.fillStyle = "#c1121f";
+    ctx.fillText(text, bx + tw / 2, by + 23);
+
+    // 지나가는 길에 있는 픽셀 친구들은 깜짝 놀라요
+    for (const c of critters) {
+      if (Math.abs(c.x - x) < 160) c.startle?.();
+    }
+
+    if (t < RUN + 400) {
+      requestAnimationFrame(frame);
+    } else {
+      stage.remove();
+      sakjunNow = false;
     }
   }
   requestAnimationFrame(frame);
