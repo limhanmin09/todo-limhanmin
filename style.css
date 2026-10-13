@@ -1018,6 +1018,7 @@ h1 {
 
 #g-water { background: repeating-linear-gradient(90deg, var(--accent) 0 calc(10% - 2px), transparent calc(10% - 2px) 10%); }
 #g-mood { background: repeating-linear-gradient(90deg, #ffb703 0 calc(10% - 2px), transparent calc(10% - 2px) 10%); }
+#g-bored { background: repeating-linear-gradient(90deg, #9b5de5 0 calc(10% - 2px), transparent calc(10% - 2px) 10%); }
 
 .cat-actions {
   display: flex;

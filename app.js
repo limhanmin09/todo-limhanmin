@@ -1378,11 +1378,13 @@ setInterval(() => {
 }, 5000);
 
 // ===== 🐱 내 고양이 "보리" =====
-// 배부름·목마름·기분은 0~100. 시간이 지나면 조금씩 줄어요 (새로고침하면 처음으로).
+// 배부름·목마름·기분·심심함은 0~100. 앞의 셋은 시간이 지나면 줄고, 심심함은 쌓여요 (새로고침하면 처음으로).
 const cat = {
   full: 70,
   water: 70,
   mood: 70,
+  bored: 30, // 심심함: 높을수록 심심해요. 놀아주면 확 줄어요
+
   busy: false, // 밥이나 물을 먹는 중
   happyUntil: 0,
 };
@@ -1437,6 +1439,7 @@ function updateGauges() {
   document.getElementById("g-full").style.width = `${cat.full}%`;
   document.getElementById("g-water").style.width = `${cat.water}%`;
   document.getElementById("g-mood").style.width = `${cat.mood}%`;
+  document.getElementById("g-bored").style.width = `${cat.bored}%`;
 }
 updateGauges();
 
@@ -1467,6 +1470,7 @@ function petCat() {
   if (Date.now() - lastPet < 500) return;
   lastPet = Date.now();
   cat.mood = clamp(cat.mood + 15);
+  cat.bored = clamp(cat.bored - 10); // 쓰다듬어 주면 심심함이 조금 줄어요
   updateGauges();
   beHappy(2000);
   catSay(pick(["골골골~", "그르릉~", "냐아~♥", "더 해줘옹"]));
@@ -1493,7 +1497,7 @@ function petCat() {
 }
 
 // 놀아주기: 장난감이 마구 흔들리고 보리가 폴짝폴짝 세 번 뛰어요
-// 신나게 놀면 기분은 오르고, 배와 목은 조금 고파져요
+// 신나게 놀면 기분은 오르고 심심함은 확 줄고, 배와 목은 조금 고파져요
 let lastPlay = 0;
 function playCat() {
   if (Date.now() - lastPlay < 1200) return;
@@ -1503,6 +1507,7 @@ function playCat() {
   }
   lastPlay = Date.now();
   cat.mood = clamp(cat.mood + 15);
+  cat.bored = clamp(cat.bored - 30);
   cat.full = clamp(cat.full - 3);
   cat.water = clamp(cat.water - 3);
   updateGauges();
@@ -1592,16 +1597,19 @@ document.getElementById("btn-play").addEventListener("click", playCat);
 document.getElementById("btn-feed").addEventListener("click", () => serve("food"));
 document.getElementById("btn-water").addEventListener("click", () => serve("water"));
 
-// 20초마다 배고픔·목마름·기분이 조금씩 줄고, 부족하면 졸라요
+// 20초마다 배고픔·목마름·기분이 조금씩 줄고 심심함은 쌓여요. 부족하면 졸라요
+// 심심함이 80 넘게 쌓이면 기분이 더 빨리 떨어져요
 setInterval(() => {
   cat.full = clamp(cat.full - 3);
   cat.water = clamp(cat.water - 4);
-  cat.mood = clamp(cat.mood - 2);
+  cat.bored = clamp(cat.bored + 6);
+  cat.mood = clamp(cat.mood - (cat.bored >= 80 ? 5 : 2));
   updateGauges();
   if (cat.busy) return;
   if (cat.full < 30) catSay("배고파옹…", 2500);
   else if (cat.water < 30) catSay("목말라옹…", 2500);
-  else if (cat.mood < 30) catSay("심심하다옹…", 2500);
+  else if (cat.bored >= 70) catSay(pick(["심심하다옹…", "놀아줘옹!", "장난감 흔들어줘옹…"]), 2500);
+  else if (cat.mood < 30) catSay("기분이 별로다옹…", 2500);
 }, 20000);
 
 // ===== 🐷 "삭준" 이스터에그 =====
