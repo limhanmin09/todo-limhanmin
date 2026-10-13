@@ -385,6 +385,9 @@ form.addEventListener("submit", (event) => {
   // 이스터에그: 할 일에 "예성"이 들어가면 "1꿇" 팻말을 든 강아지가 지나가요
   if (text.includes("예성")) yesungPuppy();
 
+  // 이스터에그: 할 일에 "승리"가 들어가면 배경 글씨가 "What is Love?"로 바뀌고 커플이 지나가요
+  if (text.includes("승리")) seungriLove();
+
   // 이스터에그: 할 일에 "진수"가 들어가면 오른쪽 위에 코 버튼이 생겨요
   if (text.includes("진수") && noseButton.hidden) {
     noseButton.hidden = false;
@@ -1805,6 +1808,132 @@ function yesungPuppy() {
     else {
       el.remove();
       puppyNow = false;
+    }
+  }
+  requestAnimationFrame(walk);
+}
+
+// ===== 💕 "승리" 이스터에그 =====
+// 배경의 "JESUS loves you"가 2초 동안 "What is Love?"로 바뀌고,
+// 손을 꼭 잡은 남녀 커플이 하트를 뿅뿅 날리며 왼쪽에서 오른쪽으로 걸어가요 (약 7초)
+// H=머리, S=피부, K=눈, M=입, B=셔츠, P=바지, F=신발 / L=긴 머리, R=리본, D=원피스
+const boyColors = { H: "#4a3728", S: "#f2c79b", K: "#2b2d42", M: "#e5737f", B: "#4ba3e3", P: "#3d5a80", F: "#2b2d42" };
+const girlColors = { L: "#6b3e26", R: "#ff4d6d", S: "#f2c79b", K: "#2b2d42", M: "#e5737f", D: "#ff8fab", F: "#c1121f" };
+const boyTop = [
+  "..HHHHHH..",
+  ".HHHHHHHH.",
+  ".HSSSSSSH.",
+  ".SSKSSKSS.",
+  ".SSSSSSSS.",
+  "..SSMMSS..",
+  "...SSSS...",
+  "..BBBBBB..",
+  ".SBBBBBBS.",
+  ".SBBBBBBS.",
+  "..BBBBBB..",
+  "..PPPPPP..",
+];
+const girlTop = [
+  "..LLRRLL..",
+  ".LLLLLLLL.",
+  "LLSSSSSSLL",
+  "LSSKSSKSSL",
+  "LSSSSSSSSL",
+  "LLSSMMSSLL",
+  "LL.SSSS.LL",
+  "..DDDDDD..",
+  ".SDDDDDDS.",
+  ".SDDDDDDS.",
+  ".DDDDDDDD.",
+  "DDDDDDDDDD",
+];
+const boyFrames = [
+  makeSprite([...boyTop, "..PP..PP..", "..PP..PP..", "..FF..FF.."], boyColors, "#2b2d42"),
+  makeSprite([...boyTop, ".PP...PP..", ".PP...PP..", ".FF...FF.."], boyColors, "#2b2d42"),
+];
+const girlFrames = [
+  makeSprite([...girlTop, "...S..S...", "...S..S...", "..FF..FF.."], girlColors, "#2b2d42"),
+  makeSprite([...girlTop, "..S....S..", "..S....S..", ".FF....FF."], girlColors, "#2b2d42"),
+];
+let loveNow = false;
+
+function seungriLove() {
+  if (loveNow) return;
+  loveNow = true;
+
+  // 1) 배경 글씨를 2초 동안 "What is Love?"로
+  const jesus = document.querySelector(".jesus");
+  const original = jesus.innerHTML;
+  jesus.innerHTML = "What is<span>Love?</span>";
+  jesus.classList.add("love");
+  setTimeout(() => {
+    jesus.innerHTML = original;
+    jesus.classList.remove("love");
+  }, 2000);
+
+  // 2) 손잡은 커플: 남자가 왼쪽, 여자가 오른쪽 (가운데 손이 맞닿아요)
+  const SCALE = 6;
+  const el = document.createElement("div");
+  el.className = "couple";
+  const boy = document.createElement("canvas");
+  const girl = document.createElement("canvas");
+  for (const c of [boy, girl]) {
+    c.width = boyFrames[0].width;
+    c.height = boyFrames[0].height;
+    c.style.width = `${c.width * SCALE}px`;
+    c.style.height = `${c.height * SCALE}px`;
+  }
+  el.append(boy, girl);
+  document.body.append(el);
+
+  const width = boy.width * SCALE * 2;
+  const DURATION = 7000;
+  const start = performance.now();
+  let frame = -1;
+  let lastHeart = 0;
+
+  function walk(now) {
+    const t = Math.max(0, now - start);
+    const p = Math.min(1, t / DURATION);
+    const x = -width - 40 + (window.innerWidth + width + 80) * p; // 왼쪽 → 오른쪽
+    el.style.transform = `translateX(${Math.round(x)}px)`;
+
+    // 두 사람이 엇갈려 통통 걸어요
+    const f = Math.floor(t / 220) % 2;
+    if (f !== frame) {
+      frame = f;
+      for (const [canvas, frames, step] of [[boy, boyFrames, f], [girl, girlFrames, 1 - f]]) {
+        const g = canvas.getContext("2d");
+        g.clearRect(0, 0, canvas.width, canvas.height);
+        g.drawImage(frames[step], 0, 0);
+      }
+      boy.style.transform = `translateY(${-f * 4}px)`;
+      girl.style.transform = `translateY(${-(1 - f) * 4}px)`;
+    }
+
+    // 머리 위로 하트가 뿅뿅
+    if (t - lastHeart > 280) {
+      lastHeart = t;
+      const heart = document.createElement("span");
+      heart.className = "love-heart";
+      heart.textContent = "♥";
+      heart.style.left = `${Math.round(x + width / 2 + (Math.random() - 0.5) * 60)}px`;
+      document.body.append(heart);
+      const drift = (Math.random() - 0.5) * 50;
+      const hStart = performance.now();
+      (function rise(n) {
+        const q = Math.min(1, (n - hStart) / 1400);
+        heart.style.transform = `translate(${Math.round(drift * q)}px, ${-Math.round(q * 90 / 4) * 4}px)`;
+        heart.style.opacity = String(1 - q);
+        if (q < 1) requestAnimationFrame(rise);
+        else heart.remove();
+      })(hStart);
+    }
+
+    if (p < 1) requestAnimationFrame(walk);
+    else {
+      el.remove();
+      loveNow = false;
     }
   }
   requestAnimationFrame(walk);

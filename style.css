@@ -1265,6 +1265,48 @@ h1 {
   border-top: 0;
 }
 
+/* ===== 💕 "승리": What is Love? + 손잡은 커플 ===== */
+
+/* 배경 글씨가 바뀌는 2초 동안은 분홍빛 */
+.jesus.love {
+  font-size: clamp(44px, 12vw, 180px); /* "What is"가 길어서 화면 안에 들어오게 조금 작게 */
+  color: rgba(255, 143, 171, 0.6);
+  text-shadow: 0.06em 0.06em 0 rgba(193, 18, 31, 0.25);
+}
+
+.jesus.love span { font-size: 0.8em; }
+
+.couple {
+  position: fixed;
+  left: 0;
+  bottom: 56px; /* 땅 바로 위 */
+  z-index: 950;
+  display: flex;
+  align-items: flex-end;
+  pointer-events: none;
+}
+
+.couple canvas {
+  display: block;
+  image-rendering: pixelated;
+  filter: drop-shadow(4px 4px 0 rgba(0, 0, 0, 0.3));
+}
+
+/* 여자 캐릭터를 살짝 겹쳐서 두 사람의 손이 맞닿게 */
+.couple canvas + canvas { margin-left: -24px; }
+
+/* 커플 머리 위로 떠오르는 하트 */
+.love-heart {
+  position: fixed;
+  bottom: 160px;
+  z-index: 951;
+  pointer-events: none;
+  font-family: var(--title-font);
+  font-size: 22px;
+  color: #ff4d6d;
+  text-shadow: 2px 2px 0 #2b2d42;
+}
+
 /* 움직임을 줄이는 설정을 켠 사람에게는 배경 움직임 없이 */
 @media (prefers-reduced-motion: reduce) {
   .cloud, .stars i, .empty::before { animation: none; }
