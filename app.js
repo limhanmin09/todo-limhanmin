@@ -394,6 +394,9 @@ form.addEventListener("submit", (event) => {
   // 이스터에그: 할 일에 "민규"가 들어가면 돼지가 민규 얼굴을 쳐서 안경이 날아오고, 안경 너머로 세상이 둥글게 보여요
   if (text.includes("민규")) minkyuGlasses();
 
+  // 이스터에그: 할 일에 "Jonathan"이 들어가면 (대소문자 상관없이) 배경이 5초간 부산으로 바뀌고 고백편지가 지나가요
+  if (/jonathan/i.test(text)) jonathanBusan();
+
   // 이스터에그: 할 일에 "진수"가 들어가면 오른쪽 위에 코 버튼이 생겨요
   if (text.includes("진수") && noseButton.hidden) {
     noseButton.hidden = false;
@@ -2344,4 +2347,236 @@ function lensView(W, H, duration) {
     svg.remove();
     frame.remove();
   }, duration);
+}
+
+// ===== 🌉 "Jonathan" 이스터에그 =====
+// 배경이 5초 동안 픽셀 부산(광안대교, 바다, 빌딩, 해운대 모래사장)으로 바뀌고,
+// 고백편지가 왼쪽에서 오른쪽으로 둥실둥실 미끄러지듯 지나가요
+let busanNow = false;
+
+// 매번 똑같은 빌딩 모양이 나오도록 고정된 순서의 "가짜 무작위"
+function seededRandom(seed) {
+  return () => {
+    seed = (seed * 16807) % 2147483647;
+    return (seed - 1) / 2147483646;
+  };
+}
+
+function jonathanBusan() {
+  if (busanNow) return;
+  busanNow = true;
+
+  const DURATION = 5000;
+  const backdrop = document.querySelector(".backdrop");
+  const canvas = document.createElement("canvas");
+  canvas.className = "busan";
+  backdrop.append(canvas);
+  const W = (canvas.width = window.innerWidth);
+  const H = (canvas.height = window.innerHeight);
+  const ctx = canvas.getContext("2d");
+  const P = 4; // 픽셀 한 칸
+  const snap = (v) => Math.round(v / P) * P;
+
+  const horizon = snap(H * 0.55); // 바다 수평선
+  const deckY = snap(H * 0.6); // 광안대교 다리 높이
+  const beachY = snap(H * 0.84); // 모래사장 시작
+
+  // 빌딩 숲 (오른쪽은 마린시티 고층 빌딩, 왼쪽은 낮은 건물)
+  const rand = seededRandom(20261014);
+  const buildings = [];
+  for (let x = snap(W * 0.6); x < W; ) {
+    const w = snap(28 + rand() * 30);
+    buildings.push({ x, w, h: snap(H * (0.14 + rand() * 0.26)), color: rand() < 0.5 ? "#5c7a99" : "#6d8db0" });
+    x += w + P;
+  }
+  for (let x = 0; x < W * 0.28; ) {
+    const w = snap(24 + rand() * 26);
+    buildings.push({ x, w, h: snap(H * (0.05 + rand() * 0.1)), color: rand() < 0.5 ? "#7d97b3" : "#8aa4bf" });
+    x += w + P;
+  }
+  // 산 능선
+  const ridge = [];
+  for (let x = 0; x <= W; x += P * 6) ridge.push(snap(horizon - H * (0.04 + rand() * 0.07)));
+  // 파라솔
+  const parasols = [0.12, 0.3, 0.52, 0.74, 0.9].map((f, i) => ({ x: snap(W * f), color: ["#ff6b6b", "#4ba3e3", "#ffd23f", "#57cc99", "#ff8fab"][i] }));
+
+  const start = performance.now();
+
+  function draw(now) {
+    const t = Math.max(0, now - start);
+    // 0.4초 동안 스르르 나타나고, 마지막 0.4초 동안 사라져요
+    canvas.style.opacity = String(t < 400 ? t / 400 : t > DURATION - 400 ? Math.max(0, (DURATION - t) / 400) : 1);
+
+    // 하늘: 띠처럼 끊어진 노을빛 하늘
+    const sky = ["#7ec8f0", "#a5d8f3", "#ffd6b0", "#ffc09f"];
+    sky.forEach((c, i) => {
+      ctx.fillStyle = c;
+      ctx.fillRect(0, (horizon / sky.length) * i, W, horizon / sky.length + 1);
+    });
+    // 하늘의 BUSAN 글씨
+    ctx.font = `${Math.round(Math.min(W * 0.045, 56))}px "Press Start 2P", monospace`; // 카드에 가리지 않게 왼쪽 위에
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "rgba(255, 255, 255, 0.55)";
+    ctx.fillText("BUSAN", W * 0.15, H * 0.12);
+
+    // 갈매기: 날개를 퍼덕이며 오른쪽으로
+    ctx.fillStyle = "#2b2d42";
+    for (let i = 0; i < 5; i++) {
+      const gx = snap(((t * 0.05 + i * W * 0.23) % (W + 80)) - 40);
+      const gy = snap(H * (0.22 + (i % 3) * 0.07) + Math.sin(t / 300 + i) * 8);
+      const up = Math.floor(t / 200 + i) % 2 === 0;
+      ctx.fillRect(gx - 2 * P, gy - (up ? P : 0), P * 2, P);
+      ctx.fillRect(gx + P, gy - (up ? P : 0), P * 2, P);
+      ctx.fillRect(gx, gy, P, P);
+    }
+
+    // 산 능선
+    ctx.fillStyle = "#4a6b8a";
+    ridge.forEach((y, i) => ctx.fillRect(i * P * 6, y, P * 6, horizon - y));
+
+    // 빌딩 + 반짝이는 창문
+    for (const b of buildings) {
+      ctx.fillStyle = b.color;
+      ctx.fillRect(b.x, horizon - b.h, b.w, b.h);
+      ctx.fillStyle = "#cfe8ff";
+      for (let wy = horizon - b.h + P * 2; wy < horizon - P; wy += P * 3) {
+        for (let wx = b.x + P; wx < b.x + b.w - P; wx += P * 3) {
+          if ((wx * 7 + wy * 13 + Math.floor(t / 700)) % 5 !== 0) ctx.fillRect(wx, wy, P, P);
+        }
+      }
+    }
+
+    // 바다: 띠 + 왼쪽으로 흘러가는 하얀 물결
+    const sea = ["#3d8fd6", "#3580c4", "#2f6fb0", "#285f99"];
+    const seaH = beachY - horizon;
+    sea.forEach((c, i) => {
+      ctx.fillStyle = c;
+      ctx.fillRect(0, horizon + (seaH / sea.length) * i, W, seaH / sea.length + 1);
+    });
+    ctx.fillStyle = "rgba(255, 255, 255, 0.75)";
+    for (let row = 0; row < 6; row++) {
+      const wy = snap(horizon + seaH * (0.15 + row * 0.14));
+      for (let k = 0; k < 7; k++) {
+        const wx = snap((((k * W) / 6 + row * 53 - t * 0.04 * (1 + row * 0.3)) % (W + 60) + W + 60) % (W + 60) - 30);
+        ctx.fillRect(wx, wy, P * (3 + (row % 3)), P);
+      }
+    }
+
+    // 광안대교: 주탑 2개 + 늘어진 케이블 + 다리 상판 + 무지개 조명
+    const towers = [snap(W * 0.2), snap(W * 0.8)]; // 카드 양옆으로 보이게
+    const towerTop = snap(deckY - H * 0.2);
+    const lightColors = ["#ff4d6d", "#ffd23f", "#57cc99", "#4cc9f0", "#9b5de5"];
+    // 케이블 (가운데는 축 늘어지고, 양쪽 끝은 다리로 내려와요)
+    const cablePoint = (x) => {
+      if (x < towers[0]) return towerTop + ((towers[0] - x) / towers[0]) * (deckY - towerTop) * 0.9;
+      if (x > towers[1]) return towerTop + ((x - towers[1]) / (W - towers[1])) * (deckY - towerTop) * 0.9;
+      const m = (x - towers[0]) / (towers[1] - towers[0]); // 0~1
+      return towerTop + 4 * m * (1 - m) * (deckY - towerTop) * 0.85;
+    };
+    for (let x = 0; x < W; x += P) {
+      const cy = snap(cablePoint(x));
+      ctx.fillStyle = "#e9eef5";
+      ctx.fillRect(x, cy, P, P);
+      // 케이블에서 상판으로 내려오는 줄
+      if (x % (P * 6) === 0) {
+        ctx.fillStyle = "rgba(233, 238, 245, 0.7)";
+        ctx.fillRect(x, cy, 2, deckY - cy);
+      }
+      // 무지개 조명이 케이블을 따라 흘러가요
+      if (x % (P * 4) === 0) {
+        ctx.fillStyle = lightColors[Math.floor(x / (P * 4) + t / 120) % lightColors.length];
+        ctx.fillRect(x, cy - P, P, P);
+      }
+    }
+    for (const tx of towers) {
+      ctx.fillStyle = "#dfe6ee";
+      ctx.fillRect(tx - P * 2, towerTop, P * 4, beachY - towerTop - seaH * 0.3);
+      ctx.fillStyle = "#b8c4d2";
+      ctx.fillRect(tx + P, towerTop, P, beachY - towerTop - seaH * 0.3);
+      ctx.fillStyle = "#ff4d6d"; // 탑 꼭대기 빨간 불
+      if (Math.floor(t / 400) % 2 === 0) ctx.fillRect(tx - P, towerTop - P * 2, P * 2, P * 2);
+    }
+    ctx.fillStyle = "#dfe6ee";
+    ctx.fillRect(0, deckY, W, P * 3);
+    ctx.fillStyle = "#8a9bb0";
+    ctx.fillRect(0, deckY + P * 3, W, P);
+    // 상판 아래 조명
+    for (let x = 0; x < W; x += P * 3) {
+      ctx.fillStyle = lightColors[Math.floor(x / (P * 3) - t / 150 + 1000) % lightColors.length];
+      ctx.fillRect(x, deckY + P * 4, P, P);
+    }
+
+    // 해운대 모래사장 + 파라솔
+    ctx.fillStyle = "#f4d58d";
+    ctx.fillRect(0, beachY, W, H - beachY);
+    ctx.fillStyle = "#e6c06f";
+    for (let x = 0; x < W; x += P * 7) ctx.fillRect(x + ((x / P) % 3) * P, beachY + P * 4 + ((x / P) % 5) * P * 2, P, P);
+    ctx.fillStyle = "rgba(255, 255, 255, 0.85)"; // 모래사장에 밀려오는 파도
+    for (let x = 0; x < W; x += P * 5) {
+      ctx.fillRect(x, beachY - P + (Math.floor(t / 300 + x / 40) % 2) * P, P * 3, P);
+    }
+    for (const p of parasols) {
+      ctx.fillStyle = "#8b5a2b";
+      ctx.fillRect(p.x, beachY - P * 2, P, P * 12);
+      for (let i = -5; i <= 5; i++) {
+        const h = 5 - Math.abs(i);
+        ctx.fillStyle = Math.abs(i) % 2 === 0 ? p.color : "#ffffff";
+        ctx.fillRect(p.x + i * P, beachY - P * 3 - h * P, P, h * P);
+      }
+    }
+
+    if (t < DURATION) requestAnimationFrame(draw);
+    else {
+      canvas.remove();
+      busanNow = false;
+    }
+  }
+  requestAnimationFrame(draw);
+
+  sendLoveLetter(DURATION);
+}
+
+// 💌 고백편지: 왼쪽에서 오른쪽으로 둥실둥실 미끄러지듯 지나가요
+function sendLoveLetter(duration) {
+  const letter = document.createElement("div");
+  letter.className = "love-letter";
+  letter.innerHTML = '<p class="letter-paper">좋아해 ♥</p><div class="envelope"><span class="seal">♥</span></div>';
+  document.body.append(letter);
+  const start = performance.now();
+  const width = 220;
+  let lastHeart = 0;
+
+  function glide(now) {
+    const t = Math.max(0, now - start);
+    const p = Math.min(1, t / duration);
+    const eased = 0.5 - Math.cos(p * Math.PI) / 2; // 천천히 출발 → 미끄러지듯 → 천천히 도착
+    const x = -width - 40 + (window.innerWidth + width + 80) * eased;
+    const y = window.innerHeight * 0.4 + Math.sin(t / 450) * 24;
+    const tilt = Math.sin(t / 600) * 6;
+    letter.style.transform = `translate(${x}px, ${y}px) rotate(${tilt}deg)`;
+
+    // 지나간 자리에 작은 하트가 톡톡 떨어져요
+    if (t - lastHeart > 220 && p > 0.02 && p < 0.98) {
+      lastHeart = t;
+      const heart = document.createElement("span");
+      heart.className = "letter-heart";
+      heart.textContent = "♥";
+      heart.style.left = `${x + 20}px`;
+      heart.style.top = `${y + 90}px`;
+      document.body.append(heart);
+      const hs = performance.now();
+      (function fall(n) {
+        const q = Math.min(1, (n - hs) / 1200);
+        heart.style.transform = `translateY(${Math.round(q * 60)}px)`;
+        heart.style.opacity = String(1 - q);
+        if (q < 1) requestAnimationFrame(fall);
+        else heart.remove();
+      })(hs);
+    }
+
+    if (p < 1) requestAnimationFrame(glide);
+    else letter.remove();
+  }
+  requestAnimationFrame(glide);
 }
