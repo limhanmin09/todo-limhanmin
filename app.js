@@ -388,6 +388,12 @@ form.addEventListener("submit", (event) => {
   // 이스터에그: 할 일에 "승리"가 들어가면 배경 글씨가 "What is Love?"로 바뀌고 커플이 지나가요
   if (text.includes("승리")) seungriLove();
 
+  // 이스터에그: 할 일에 "코헨"이 들어가면 세상이 어두워지고 양탄자 탄 사람이 램프를 들고 날아가요
+  if (text.includes("코헨")) cohenCarpet();
+
+  // 이스터에그: 할 일에 "민규"가 들어가면 돼지가 민규 얼굴을 쳐서 안경이 날아오고, 안경 너머로 세상이 둥글게 보여요
+  if (text.includes("민규")) minkyuGlasses();
+
   // 이스터에그: 할 일에 "진수"가 들어가면 오른쪽 위에 코 버튼이 생겨요
   if (text.includes("진수") && noseButton.hidden) {
     noseButton.hidden = false;
@@ -1937,4 +1943,405 @@ function seungriLove() {
     }
   }
   requestAnimationFrame(walk);
+}
+
+// 화면 전체를 덮는 캔버스 판을 만들어요 (클릭은 그대로 통과)
+function makeStage() {
+  const stage = document.createElement("div");
+  stage.className = "party";
+  const canvas = document.createElement("canvas");
+  stage.append(canvas);
+  document.body.append(stage);
+  const ctx = canvas.getContext("2d");
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  ctx.imageSmoothingEnabled = false;
+  return { stage, canvas, ctx, W: canvas.width, H: canvas.height };
+}
+
+// 캔버스에 픽셀 말풍선을 그려요
+function drawBubble(ctx, text, x, y, size, color = "#2b2d42") {
+  ctx.font = `700 ${size}px Galmuri11, "Press Start 2P", monospace`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  const w = ctx.measureText(text).width + size;
+  const h = size * 1.8;
+  const bx = Math.round(x - w / 2);
+  const by = Math.round(y - h);
+  ctx.fillStyle = "#2b2d42";
+  ctx.fillRect(bx - 4, by - 4, w + 8, h + 8);
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(bx, by, w, h);
+  ctx.fillStyle = color;
+  ctx.fillText(text, bx + w / 2, by + h / 2);
+}
+
+// ===== 🧞 "코헨" 이스터에그 =====
+// 세상이 갑자기 캄캄해지고, 양탄자를 탄 사람이 램프를 들고 왼쪽에서 오른쪽으로 날아가요.
+// 램프 주변만 동그랗게 환해져요 (약 6.5초)
+const riderSprite = makeSprite(
+  [
+    "..HHHHH...",
+    ".HHHHHHH..",
+    ".HSSSSSH..",
+    ".SSSSKSS..",
+    "..SSSSS...",
+    "..VVVVVSS.",
+    ".VVWWVVSS.",
+    ".VVVVVV...",
+    "PPPPPPPP..",
+    "PPPPPPPPP.",
+  ],
+  { H: "#2b2d42", S: "#d9a066", K: "#2b2d42", V: "#7b2cbf", W: "#ffd23f", P: "#f8f9fa" },
+  "#2b2d42"
+);
+const lampSprite = makeSprite(["...GG..", ".GGGGGG", "GGGGGG.", "..GGG.."], { G: "#ffd23f" }, "#a86b00");
+let cohenNow = false;
+
+function cohenCarpet() {
+  if (cohenNow) return;
+  cohenNow = true;
+  const { stage, ctx, W, H } = makeStage();
+  const DURATION = 6500;
+  const S = 7; // 픽셀 한 칸 크기
+  const sparks = [];
+  const start = performance.now();
+
+  function frame(now) {
+    const t = Math.max(0, now - start);
+    ctx.clearRect(0, 0, W, H);
+
+    // 1) 어둠: 0.3초 만에 확 어두워지고, 마지막 0.6초에 밝아져요
+    const darkness = t < 300 ? t / 300 : t > DURATION - 600 ? Math.max(0, (DURATION - t) / 600) : 1;
+
+    // 양탄자 위치: 왼쪽 밖 → 오른쪽 밖, 위아래로 둥실둥실
+    const carpetW = 30 * S;
+    const p = Math.min(1, Math.max(0, (t - 400) / (DURATION - 1000)));
+    const x = -carpetW - 60 + (W + carpetW + 120) * p;
+    const y = H * 0.38 + Math.round(Math.sin(t / 400) * 3) * 6;
+    const lampX = x + 18 * S;
+    const lampY = y - 6 * S;
+
+    ctx.fillStyle = `rgba(4, 6, 20, ${0.88 * darkness})`;
+    ctx.fillRect(0, 0, W, H);
+    // 램프 주변만 동그랗게 밝혀요
+    ctx.globalCompositeOperation = "destination-out";
+    const light = ctx.createRadialGradient(lampX, lampY, 20, lampX, lampY, 200);
+    light.addColorStop(0, "rgba(0,0,0,1)");
+    light.addColorStop(0.6, "rgba(0,0,0,0.7)");
+    light.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = light;
+    ctx.beginPath();
+    ctx.arc(lampX, lampY, 200, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalCompositeOperation = "source-over";
+    // 따뜻한 노란 빛
+    const glow = ctx.createRadialGradient(lampX, lampY, 10, lampX, lampY, 170);
+    glow.addColorStop(0, "rgba(255, 210, 63, 0.35)");
+    glow.addColorStop(1, "rgba(255, 210, 63, 0)");
+    ctx.fillStyle = glow;
+    ctx.fillRect(lampX - 170, lampY - 170, 340, 340);
+
+    if (t > 400 && p < 1) {
+      // 2) 물결치는 양탄자: 칸마다 위아래로 살랑살랑
+      for (let c = 0; c < 30; c++) {
+        const wave = Math.round(Math.sin(t / 150 - c * 0.45)) * S;
+        for (let r = 0; r < 3; r++) {
+          const stripe = r === 1 ? (c % 4 < 2 ? "#ffd23f" : "#e63946") : "#c1121f";
+          ctx.fillStyle = stripe;
+          ctx.fillRect(Math.round(x + c * S), Math.round(y + r * S + wave), S, S);
+        }
+        if (c === 0 || c === 29) {
+          ctx.fillStyle = "#ffd23f"; // 양 끝 술 장식
+          ctx.fillRect(Math.round(x + c * S + (c === 0 ? -S : S)), Math.round(y + S + wave), S, S);
+        }
+      }
+      // 3) 양탄자 위에 앉은 사람 + 앞으로 내민 램프
+      const rx = Math.round(x + 9 * S);
+      const ry = Math.round(y - riderSprite.height * S + Math.round(Math.sin(t / 150 - 10 * 0.45)) * S);
+      ctx.drawImage(riderSprite, rx, ry, riderSprite.width * S, riderSprite.height * S);
+      ctx.drawImage(lampSprite, Math.round(lampX - 2 * S), Math.round(lampY - 2 * S), lampSprite.width * S, lampSprite.height * S);
+
+      // 램프에서 반짝이 가루가 뒤로 흩날려요
+      if (Math.random() < 0.7) {
+        sparks.push({ x: lampX, y: lampY, vx: -1 - Math.random() * 3, vy: (Math.random() - 0.5) * 2, life: 1 });
+      }
+      if (t < 2500) drawBubble(ctx, "오늘 밤 하늘은 내 거야~", rx + 5 * S, ry - 10, 18);
+    }
+
+    for (let i = sparks.length - 1; i >= 0; i--) {
+      const s = sparks[i];
+      s.x += s.vx;
+      s.y += s.vy;
+      s.life -= 0.025;
+      if (s.life <= 0) { sparks.splice(i, 1); continue; }
+      ctx.globalAlpha = s.life;
+      ctx.fillStyle = Math.random() < 0.5 ? "#fff6c2" : "#ffd23f";
+      ctx.fillRect(Math.round(s.x / 4) * 4, Math.round(s.y / 4) * 4, 6, 6);
+    }
+    ctx.globalAlpha = 1;
+
+    if (t < DURATION) requestAnimationFrame(frame);
+    else {
+      stage.remove();
+      cohenNow = false;
+    }
+  }
+  requestAnimationFrame(frame);
+}
+
+// ===== 👓 "민규" 이스터에그 =====
+// 민규가 목줄 맨 돼지와 함께 걸어 나와요 → 돼지가 돌아서서 민규 얼굴을 퍽! →
+// 안경이 빙글빙글 화면 쪽으로 날아와요 → 3초 동안 안경 렌즈 너머로 세상이 둥글게 휘어 보여요.
+// 그동안 배경 글씨는 "TOM & Jerry" (약 7.5초)
+const minkyuTop = [
+  "..HHHHHH..",
+  ".HHHHHHHH.",
+  ".HSSSSSSH.",
+];
+const minkyuBottom = [
+  ".SSSSSSSS.",
+  "..SSMMSS..",
+  "...SSSS...",
+  "..BBBBBB..",
+  ".SBBBBBBS.",
+  ".SBBBBBBS.",
+  "..BBBBBB..",
+  "..PPPPPP..",
+];
+const minkyuColors = { H: "#2b2d42", S: "#f2c79b", K: "#2b2d42", M: "#e5737f", B: "#57cc99", P: "#3d5a80", F: "#2b2d42", G: "#2b2d42" };
+const minkyuLegs = [
+  ["..PP..PP..", "..PP..PP..", "..FF..FF.."],
+  [".PP...PP..", ".PP...PP..", ".FF...FF.."],
+];
+// 안경 쓴 얼굴(G=안경테) / 안경 없는 얼굴 / 맞고 어지러운 얼굴(X)
+const minkyuFaces = {
+  glasses: ".GKGSGKGS.",
+  bare: ".SSKSSKSS.",
+  dizzy: ".SXSSSXSS.",
+};
+function minkyuSprite(face, legs) {
+  return makeSprite([...minkyuTop, minkyuFaces[face], ...minkyuBottom, ...minkyuLegs[legs]], { ...minkyuColors, X: "#c1121f" }, "#2b2d42");
+}
+const minkyuSprites = {
+  glasses: [minkyuSprite("glasses", 0), minkyuSprite("glasses", 1)],
+  bare: [minkyuSprite("bare", 0)],
+  dizzy: [minkyuSprite("dizzy", 0)],
+};
+const glassesSprite = makeSprite(
+  ["GGGGG..GGGGG", "GLLLGGGGLLLG", "GLLLG..GLLLG", "GLLLG..GLLLG", "GGGGG..GGGGG"],
+  { G: "#2b2d42", L: "rgba(180, 220, 255, 0.55)" },
+  null
+);
+
+// 둥글게 휘어 보이게 하는 SVG 필터 (가운데가 볼록 튀어나온 렌즈처럼)
+function makeLensFilter(W, H) {
+  // 픽셀마다 "어느 쪽에서 화면을 끌어올지"를 빨강(가로)·초록(세로) 색으로 적은 지도
+  const size = 256;
+  const map = document.createElement("canvas");
+  map.width = map.height = size;
+  const g = map.getContext("2d");
+  const img = g.createImageData(size, size);
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const nx = (x / (size - 1)) * 2 - 1;
+      const ny = (y / (size - 1)) * 2 - 1;
+      const r2 = nx * nx + ny * ny;
+      const k = r2 < 1 ? 1 - r2 : 0; // 가운데일수록 세게
+      const i = (y * size + x) * 4;
+      img.data[i] = Math.round(128 - nx * k * 127);
+      img.data[i + 1] = Math.round(128 - ny * k * 127);
+      img.data[i + 2] = 128;
+      img.data[i + 3] = 255;
+    }
+  }
+  g.putImageData(img, 0, 0);
+
+  const svgNS = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(svgNS, "svg");
+  svg.setAttribute("width", "0");
+  svg.setAttribute("height", "0");
+  svg.style.position = "absolute";
+  svg.innerHTML = `
+    <filter id="glasses-lens" filterUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${H}"
+            color-interpolation-filters="sRGB">
+      <feImage href="${map.toDataURL()}" x="0" y="0" width="${W}" height="${H}"
+               preserveAspectRatio="none" result="map"/>
+      <feDisplacementMap in="SourceGraphic" in2="map" scale="${Math.round(Math.min(W, H) * 0.55)}"
+                         xChannelSelector="R" yChannelSelector="G"/>
+    </filter>`;
+  return svg;
+}
+
+let minkyuNow = false;
+
+function minkyuGlasses() {
+  if (minkyuNow) return;
+  minkyuNow = true;
+
+  // 배경 글씨를 TOM & Jerry로
+  const jesus = document.querySelector(".jesus");
+  const original = jesus.innerHTML;
+  jesus.innerHTML = "TOM &amp;<span>Jerry</span>";
+  jesus.classList.add("tom");
+
+  const { stage, ctx, W, H } = makeStage();
+  const MS = 7; // 민규 픽셀 크기
+  const PS = 6; // 돼지 픽셀 크기
+  const groundTop = H - 56;
+  const manW = minkyuSprites.glasses[0].width * MS;
+  const manH = minkyuSprites.glasses[0].height * MS;
+  const pigW = pigFrames[0].width * PS;
+  const pigH = pigFrames[0].height * PS;
+  const stopX = Math.round(W * 0.3); // 여기까지 걸어와서 멈춰요
+  const T = { stop: 1600, turn: 2000, hit: 2700, fly: 2750, lens: 3300, lensEnd: 6300, end: 7500 };
+  let lensOn = false;
+  let shaken = false;
+  const start = performance.now();
+
+  function frame(now) {
+    const t = Math.max(0, now - start);
+    ctx.clearRect(0, 0, W, H);
+
+    // 민규 위치: 왼쪽 밖에서 stopX까지 걸어와요
+    const walkP = Math.min(1, t / T.stop);
+    const manX = Math.round(-manW - 200 + (stopX + manW + 200) * walkP);
+    const manY = groundTop - manH - (t < T.stop ? (Math.floor(t / 180) % 2) * 4 : 0);
+    const walking = t < T.stop;
+
+    // 돼지: 민규 앞(오른쪽)에서 걷다가, 돌아서서, 펄쩍 뛰어 얼굴을 퍽!
+    let pigX = manX + manW + 70;
+    let pigY = groundTop - pigH;
+    let pigFacesLeft = false;
+    if (t >= T.turn) pigFacesLeft = true;
+    if (t >= T.turn + 300 && t < T.hit) {
+      // 뒤로 살짝 물러났다가 돌진
+      const q = (t - T.turn - 300) / (T.hit - T.turn - 300);
+      pigX += Math.round(q < 0.4 ? q * 60 : 24 - (q - 0.4) * 180);
+      pigY -= Math.round(Math.sin(Math.min(1, Math.max(0, (q - 0.4) / 0.6)) * Math.PI) * manH * 0.55);
+    } else if (t >= T.hit) {
+      pigX += 10;
+    }
+
+    // 목줄: 민규 손에서 돼지 목까지 축 늘어진 줄
+    const handX = manX + manW - MS * 2;
+    const handY = manY + MS * 9;
+    const neckX = pigFacesLeft ? pigX + PS * 3 : pigX + pigW - PS * 3;
+    const neckY = pigY + PS * 5;
+    ctx.fillStyle = "#c1121f";
+    for (let s = 0; s <= 1; s += 0.025) {
+      const lx = handX + (neckX - handX) * s;
+      const ly = handY + (neckY - handY) * s + Math.sin(s * Math.PI) * 24;
+      ctx.fillRect(Math.round(lx / 3) * 3, Math.round(ly / 3) * 3, 4, 4);
+    }
+
+    // 민규 그리기 (맞은 뒤엔 안경 없음 → 어지러운 얼굴)
+    let man = minkyuSprites.glasses[walking ? Math.floor(t / 180) % 2 : 0];
+    if (t >= T.hit) man = t < T.lensEnd ? minkyuSprites.dizzy[0] : minkyuSprites.bare[0];
+    const knock = t >= T.hit && t < T.hit + 300 ? -Math.round((1 - (t - T.hit) / 300) * 20) : 0;
+    ctx.drawImage(man, manX + knock, manY, manW, manH);
+
+    // 돼지 그리기 (원래 왼쪽을 보는 그림이라, 오른쪽으로 갈 땐 뒤집어요)
+    const pig = pigFrames[walking ? Math.floor(t / 120) % 2 : 0];
+    ctx.save();
+    if (!pigFacesLeft) {
+      ctx.translate(pigX + pigW, pigY);
+      ctx.scale(-1, 1);
+      ctx.drawImage(pig, 0, 0, pigW, pigH);
+    } else {
+      ctx.drawImage(pig, pigX, pigY, pigW, pigH);
+    }
+    ctx.restore();
+
+    // 말풍선
+    if (t > 600 && t < T.turn) drawBubble(ctx, "산책 가자 꿀돼지야~", manX + manW / 2, manY - 8, 18);
+    if (t >= T.turn && t < T.hit) drawBubble(ctx, "꿀…?", pigX + pigW / 2, pigY - 8, 20, "#c1121f");
+    if (t >= T.hit && t < T.hit + 500) {
+      drawBubble(ctx, "퍽!!", manX + manW / 2, manY - 8, 34, "#c1121f");
+      if (!shaken) {
+        shaken = true;
+        shakeScreen(500, 22);
+      }
+    }
+    if (t >= T.lensEnd && t < T.end) drawBubble(ctx, "내 안경…!!", manX + manW / 2, manY - 8, 20);
+
+    // 안경이 빙글빙글 돌며 화면 쪽으로 날아와요 (점점 커져요)
+    if (t >= T.fly && t < T.lens) {
+      const q = (t - T.fly) / (T.lens - T.fly);
+      const size = glassesSprite.width * MS * (1 + q * q * 14);
+      const gx = manX + manW / 2 + (W / 2 - manX - manW / 2) * q;
+      const gy = manY + MS * 4 + (H / 2 - manY - MS * 4) * q - Math.sin(q * Math.PI) * 120;
+      ctx.save();
+      ctx.translate(gx, gy);
+      ctx.rotate(Math.round((q * 4 * Math.PI) / (Math.PI / 4)) * (Math.PI / 4));
+      ctx.drawImage(glassesSprite, -size / 2, (-size * glassesSprite.height) / glassesSprite.width / 2, size, (size * glassesSprite.height) / glassesSprite.width);
+      ctx.restore();
+    }
+
+    // 3초 동안 안경 렌즈 너머로 보기: 세상이 둥글게 휘고, 렌즈 바깥은 깜깜
+    if (t >= T.lens && t < T.lensEnd && !lensOn) {
+      lensOn = true;
+      lensView(W, H, T.lensEnd - T.lens);
+    }
+
+    if (t < T.end) requestAnimationFrame(frame);
+    else {
+      stage.remove();
+      jesus.innerHTML = original;
+      jesus.classList.remove("tom");
+      minkyuNow = false;
+    }
+  }
+  requestAnimationFrame(frame);
+}
+
+// 안경 렌즈 시점: 화면 전체에 둥근 렌즈 필터 + 안경테 모양 테두리
+function lensView(W, H, duration) {
+  const svg = makeLensFilter(W, H);
+  document.body.append(svg);
+  const html = document.documentElement;
+  html.style.filter = "url(#glasses-lens)";
+
+  // 안경테: 두 개의 큰 렌즈 구멍만 보이고 나머지는 어둡게
+  const frame = document.createElement("canvas");
+  frame.className = "lens-frame";
+  frame.width = W;
+  frame.height = H;
+  const g = frame.getContext("2d");
+  const r = Math.min(W * 0.27, H * 0.46);
+  const cy = H / 2;
+  const lx = W / 2 - r * 1.05;
+  const rx = W / 2 + r * 1.05;
+  g.fillStyle = "rgba(10, 10, 20, 0.92)";
+  g.fillRect(0, 0, W, H);
+  g.globalCompositeOperation = "destination-out";
+  for (const cx of [lx, rx]) {
+    g.beginPath();
+    g.arc(cx, cy, r, 0, Math.PI * 2);
+    g.fill();
+  }
+  g.globalCompositeOperation = "source-over";
+  g.strokeStyle = "#2b2d42";
+  g.lineWidth = 18;
+  for (const cx of [lx, rx]) {
+    g.beginPath();
+    g.arc(cx, cy, r, 0, Math.PI * 2);
+    g.stroke();
+  }
+  // 코받침 다리
+  g.fillStyle = "#2b2d42";
+  g.fillRect(lx + r - 4, cy - r * 0.35, rx - lx - 2 * r + 8, 18);
+  // 렌즈 반사광
+  g.fillStyle = "rgba(255, 255, 255, 0.35)";
+  for (const cx of [lx, rx]) {
+    g.fillRect(cx - r * 0.55, cy - r * 0.6, r * 0.25, 14);
+    g.fillRect(cx - r * 0.62, cy - r * 0.45, 14, r * 0.25);
+  }
+  document.body.append(frame);
+
+  setTimeout(() => {
+    html.style.filter = "";
+    svg.remove();
+    frame.remove();
+  }, duration);
 }
